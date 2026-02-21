@@ -4,7 +4,7 @@ import { UserSchema, UserUpdateSchema } from '../schemas/user.schema.js';
 import { ErrorResponseSchema, SuccessResponseSchema } from '../schemas/common.schema.js';
 import type { User } from '../schemas/user.schema.js';
 import type { UserDocument } from '../models/user.model.js';
-import { ForbiddenError } from '../utils/errors.js';
+import { requireRole } from '../middleware/rbac.js';
 
 // Env type for routes that expect auth context
 type AuthEnv = {
@@ -207,6 +207,9 @@ export const userRouter = new OpenAPIHono<AuthEnv>();
 
 // NOTE: Auth middleware is applied in src/index.ts via app.use('/api/v1/users/*', authMiddleware)
 
+// RBAC: admin-only for delete operations
+userRouter.delete('/users/:id', requireRole('admin'));
+
 userRouter.openapi(getMeRoute, async (c) => {
   const userId = c.get('userId');
   const user = await userService.findById(userId);
@@ -228,12 +231,6 @@ userRouter.openapi(updateUserRoute, async (c) => {
 
 userRouter.openapi(deleteUserRoute, async (c) => {
   const { id } = c.req.valid('param');
-  const role = c.get('role');
-
-  if (role !== 'admin' && role !== 'superAdmin') {
-    throw new ForbiddenError('Forbidden — admin only');
-  }
-
   await userService.delete(id);
   return c.json({ success: true as const, message: 'User deleted' }, 200);
 });
