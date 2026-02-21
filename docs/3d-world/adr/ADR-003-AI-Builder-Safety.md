@@ -1,7 +1,7 @@
 # ADR-003 - AI Builder Safety Model
 
 Data: 2026-02-21
-Stato: Proposed
+Stato: Accepted (2026-02-21)
 
 ## Contesto
 L'AI Builder puo' accelerare sviluppo ma introduce rischio su qualita', sicurezza e governance.

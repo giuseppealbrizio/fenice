@@ -18,6 +18,11 @@
    - Razionale: sicurezza e governance del codice.
    - Impatto: nessun write diretto su main.
 
+5. Decisione: Approvazione ADR-001, ADR-002, ADR-003.
+   - Razionale: tutti e tre solidi, nessuna modifica richiesta.
+   - Impatto: sblocca task W1-T01 e tutte le dipendenze M1.
+   - Owner: Giuseppe
+
 ## Template nuova decisione
 ```md
 ## YYYY-MM-DD

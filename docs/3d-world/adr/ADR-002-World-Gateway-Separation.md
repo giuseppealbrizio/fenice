@@ -1,7 +1,7 @@
 # ADR-002 - World Gateway separato da WS chat
 
 Data: 2026-02-21
-Stato: Proposed
+Stato: Accepted (2026-02-21)
 
 ## Contesto
 Le WS attuali coprono chat/room/ping. Il 3D world richiede fanout, ordering, resume e controllo backpressure specifici.

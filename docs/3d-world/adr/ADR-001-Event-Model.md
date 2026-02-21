@@ -1,7 +1,7 @@
 # ADR-001 - Event Model Realtime
 
 Data: 2026-02-21
-Stato: Proposed
+Stato: Accepted (2026-02-21)
 
 ## Contesto
 Il client 3D necessita aggiornamenti realtime consistenti, ordinabili e recuperabili dopo reconnect.
