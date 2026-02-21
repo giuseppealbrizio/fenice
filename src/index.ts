@@ -9,6 +9,7 @@ import { requestLogger } from './middleware/requestLogger.js';
 import { authMiddleware } from './middleware/auth.js';
 import { handleError } from './middleware/errorHandler.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
+import { apiVersion } from './middleware/api-version.js';
 import { generateLlmDocs } from './utils/llm-docs.js';
 
 export const app = new OpenAPIHono();
@@ -16,6 +17,9 @@ export const app = new OpenAPIHono();
 // Global middleware
 app.use('*', requestId);
 app.use('*', requestLogger);
+
+// API versioning
+app.use('/api/*', apiVersion);
 
 // Error handler
 app.onError(handleError);
