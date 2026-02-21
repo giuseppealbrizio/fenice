@@ -50,10 +50,8 @@
     "@opentelemetry/sdk-node": "^0.212.0",
     "@opentelemetry/semantic-conventions": "^1.39.0",
     "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "firebase-admin": "^13.6.1",
-    "helmet": "^8.1.0",
     "hono": "^4.12.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.1",
@@ -91,5 +89,8 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "minimatch": ">=10.2.1"
   }
 }
