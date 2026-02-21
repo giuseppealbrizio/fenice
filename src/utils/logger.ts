@@ -1,7 +1,7 @@
 import pino from 'pino';
 
 export function createLogger(serviceName: string, logLevel: string): pino.Logger {
-  return pino({
+  const options: pino.LoggerOptions = {
     level: logLevel,
     formatters: {
       level: (label) => ({ level: label }),
@@ -10,9 +10,11 @@ export function createLogger(serviceName: string, logLevel: string): pino.Logger
     base: {
       service: serviceName,
     },
-    transport:
-      process.env.NODE_ENV === 'development'
-        ? { target: 'pino-pretty', options: { colorize: true } }
-        : undefined,
-  });
+  };
+
+  if (process.env.NODE_ENV === 'development') {
+    options.transport = { target: 'pino-pretty', options: { colorize: true } };
+  }
+
+  return pino(options);
 }
