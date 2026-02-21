@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('firebase-admin', () => ({
+  default: {
+    initializeApp: vi.fn(),
+    messaging: vi.fn().mockReturnValue({ send: vi.fn() }),
+    credential: {
+      cert: vi.fn().mockReturnValue('mock-credential'),
+    },
+  },
+}));
+
 describe('Adapter Factory', () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
