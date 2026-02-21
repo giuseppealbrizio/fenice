@@ -90,6 +90,13 @@ export class AuthService {
     }
   }
 
+  async logout(userId: string): Promise<void> {
+    const user = await UserModel.findById(userId);
+    if (!user) throw new NotFoundError('User not found');
+    user.refreshToken = undefined;
+    await user.save();
+  }
+
   async verifyEmail(token: string): Promise<void> {
     const hashedToken = hashToken(token);
     const user = await UserModel.findOne({
