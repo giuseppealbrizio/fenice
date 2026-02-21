@@ -1,6 +1,7 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { createNodeWebSocket } from '@hono/node-ws';
 import { Scalar } from '@scalar/hono-api-reference';
+import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
@@ -29,6 +30,9 @@ export function injectWebSocket(...args: Parameters<typeof nodeWs.injectWebSocke
 app.use('*', requestId);
 app.use('*', requestLogger);
 app.use('*', secureHeaders());
+
+// CORS — read CLIENT_URL directly to avoid calling loadEnv() at module level (breaks tests)
+app.use('*', cors({ origin: process.env['CLIENT_URL'] ?? '*' }));
 
 // API versioning
 app.use('/api/*', apiVersion);
