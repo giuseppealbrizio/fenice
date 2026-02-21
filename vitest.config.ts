@@ -15,7 +15,6 @@ export default defineConfig({
         'src/instrumentation.ts',
         'src/services/**',
         'src/models/**',
-        'src/adapters/storage/gcs.adapter.ts',
         'src/adapters/messaging/fcm.adapter.ts',
       ],
       thresholds: {
