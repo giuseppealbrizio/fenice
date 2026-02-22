@@ -61,6 +61,18 @@
    - Sara' integrato quando gateway fornisce 403/deny signals.
    - Owner: Shared
 
+8. Decisione: Light Tron scope per M2C Foundation.
+   - Emissive glow su buildings, edge colorati e dashed per blocked. No bloom, no animazioni.
+   - Precedenza visiva: selection/hover > linkState > zone > method color.
+   - Blocked = cut/off (emissive 0.10, opacity 0.3, dashed edge). Non energetico.
+   - Owner: Giuseppe (approvato)
+
+9. Decisione: layout radiale a zone concentriche.
+   - auth-hub al centro, protected-core ring interno, public-perimeter ring esterno.
+   - Raggi dinamici calcolati da count/size dei district (no overlap).
+   - Edge auth-gated passano per il gate center. Edge non-auth restano diretti.
+   - Owner: Giuseppe (approvato)
+
 ## Template nuova decisione
 ```md
 ## YYYY-MM-DD
