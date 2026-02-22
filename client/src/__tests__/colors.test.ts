@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { METHOD_COLORS, METHOD_LABELS } from '../utils/colors';
+import { METHOD_COLORS, METHOD_LABELS, LINK_STATE_COLORS, ZONE_STYLES } from '../utils/colors';
 import type { HttpMethod } from '../types/world';
+import type { LinkState, Zone } from '../types/semantic';
+
+const ALL_LINK_STATES: LinkState[] = ['ok', 'degraded', 'blocked', 'unknown'];
+const ALL_ZONES: Zone[] = ['public-perimeter', 'protected-core', 'auth-hub'];
 
 const ALL_METHODS: HttpMethod[] = [
   'get',
@@ -48,6 +52,57 @@ describe('METHOD_LABELS', () => {
   it('labels are uppercase versions of methods', () => {
     for (const method of ALL_METHODS) {
       expect(METHOD_LABELS[method]).toBe(method.toUpperCase());
+    }
+  });
+});
+
+describe('LINK_STATE_COLORS', () => {
+  it('has entry for every link state', () => {
+    for (const state of ALL_LINK_STATES) {
+      expect(LINK_STATE_COLORS[state]).toBeDefined();
+    }
+  });
+
+  it('each entry has hex, emissiveIntensity, opacity', () => {
+    for (const state of ALL_LINK_STATES) {
+      const entry = LINK_STATE_COLORS[state];
+      expect(entry.hex).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(typeof entry.emissiveIntensity).toBe('number');
+      expect(typeof entry.opacity).toBe('number');
+    }
+  });
+
+  it('blocked emissive is lower than degraded', () => {
+    expect(LINK_STATE_COLORS.blocked.emissiveIntensity).toBeLessThan(
+      LINK_STATE_COLORS.degraded.emissiveIntensity
+    );
+  });
+
+  it('blocked opacity is lowest among active states', () => {
+    expect(LINK_STATE_COLORS.blocked.opacity).toBeLessThanOrEqual(
+      LINK_STATE_COLORS.degraded.opacity
+    );
+    expect(LINK_STATE_COLORS.blocked.opacity).toBeLessThanOrEqual(LINK_STATE_COLORS.ok.opacity);
+  });
+
+  it('each entry has edgeStyle', () => {
+    expect(LINK_STATE_COLORS.ok.edgeStyle).toBe('solid');
+    expect(LINK_STATE_COLORS.degraded.edgeStyle).toBe('solid');
+    expect(LINK_STATE_COLORS.blocked.edgeStyle).toBe('dashed');
+    expect(LINK_STATE_COLORS.unknown.edgeStyle).toBe('solid');
+  });
+});
+
+describe('ZONE_STYLES', () => {
+  it('has entry for every zone', () => {
+    for (const zone of ALL_ZONES) {
+      expect(ZONE_STYLES[zone]).toBeDefined();
+    }
+  });
+
+  it('each entry has floorColor', () => {
+    for (const zone of ALL_ZONES) {
+      expect(ZONE_STYLES[zone].floorColor).toMatch(/^#[0-9A-Fa-f]{6}$/);
     }
   });
 });

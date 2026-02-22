@@ -4,9 +4,11 @@ import {
   BUILDING_GAP,
   DISTRICT_PADDING,
   DISTRICT_GAP,
-  DISTRICTS_PER_ROW,
   MIN_HEIGHT,
   MAX_HEIGHT,
+  MIN_INNER_RADIUS,
+  MIN_OUTER_RADIUS,
+  RING_GAP,
 } from '../utils/constants';
 
 export interface Position3D {
@@ -26,6 +28,7 @@ export interface BuildingLayout {
 export interface DistrictLayout {
   serviceId: string;
   tag: string;
+  zone: 'public-perimeter' | 'protected-core';
   center: { x: number; z: number };
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
 }
@@ -33,14 +36,51 @@ export interface DistrictLayout {
 export interface CityLayout {
   buildings: BuildingLayout[];
   districts: DistrictLayout[];
+  gatePosition: Position3D;
+}
+
+type ServiceZone = 'public-perimeter' | 'protected-core';
+
+function classifyServiceZone(
+  serviceId: string,
+  endpointsByService: Map<string, WorldEndpoint[]>
+): ServiceZone {
+  const eps = endpointsByService.get(serviceId) ?? [];
+  const authCount = eps.filter((e) => e.hasAuth).length;
+  return authCount > 0 ? 'protected-core' : 'public-perimeter';
+}
+
+function computeDistrictSize(endpointCount: number): { width: number; depth: number } {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(endpointCount)));
+  const rows = Math.max(1, Math.ceil(endpointCount / cols));
+  const width = cols * (BUILDING_BASE_SIZE + BUILDING_GAP) - BUILDING_GAP + DISTRICT_PADDING * 2;
+  const depth = rows * (BUILDING_BASE_SIZE + BUILDING_GAP) - BUILDING_GAP + DISTRICT_PADDING * 2;
+  return { width, depth };
+}
+
+function computeRingRadius(
+  districts: { width: number; depth: number }[],
+  minRadius: number
+): number {
+  if (districts.length === 0) return minRadius;
+  // Use diagonal of each district to ensure rectangular bounds don't overlap
+  const totalArc = districts.reduce(
+    (sum, d) => sum + Math.sqrt(d.width * d.width + d.depth * d.depth) + DISTRICT_GAP,
+    0
+  );
+  const computed = totalArc / (2 * Math.PI);
+  return Math.max(minRadius, computed);
 }
 
 /**
- * Compute deterministic grid layout for the city.
+ * Compute deterministic radial zone layout for the city.
  *
- * Services are sorted alphabetically by tag and arranged in a row-major grid.
- * Within each district, endpoints are arranged in a sub-grid.
- * Building height scales with parameterCount.
+ * Services are classified into zones (protected-core / public-perimeter)
+ * based on whether any endpoint has auth. Protected-core services are
+ * placed on an inner ring, public-perimeter on an outer ring.
+ *
+ * Within each zone, services are sorted alphabetically by tag and placed
+ * angularly around their ring. Dynamic radius grows with district count/size.
  *
  * Same input always produces the same output (no randomness).
  */
@@ -48,14 +88,14 @@ export function computeCityLayout(
   services: WorldService[],
   endpoints: WorldEndpoint[]
 ): CityLayout {
+  const gatePosition: Position3D = { x: 0, y: 0, z: 0 };
+
   if (services.length === 0 || endpoints.length === 0) {
-    return { buildings: [], districts: [] };
+    return { buildings: [], districts: [], gatePosition };
   }
 
-  // Sort services alphabetically for deterministic layout
   const sortedServices = [...services].sort((a, b) => a.tag.localeCompare(b.tag));
 
-  // Group endpoints by serviceId
   const endpointsByService = new Map<string, WorldEndpoint[]>();
   for (const ep of endpoints) {
     const list = endpointsByService.get(ep.serviceId) ?? [];
@@ -63,117 +103,107 @@ export function computeCityLayout(
     endpointsByService.set(ep.serviceId, list);
   }
 
-  // Find max parameterCount for height normalization
   const maxParams = Math.max(1, ...endpoints.map((e) => e.parameterCount));
+
+  const innerServices: WorldService[] = [];
+  const outerServices: WorldService[] = [];
+
+  for (const svc of sortedServices) {
+    const zone = classifyServiceZone(svc.id, endpointsByService);
+    if (zone === 'protected-core') innerServices.push(svc);
+    else outerServices.push(svc);
+  }
+
+  const innerSizes = innerServices.map((s) => {
+    const eps = endpointsByService.get(s.id) ?? [];
+    return computeDistrictSize(eps.length);
+  });
+  const outerSizes = outerServices.map((s) => {
+    const eps = endpointsByService.get(s.id) ?? [];
+    return computeDistrictSize(eps.length);
+  });
+
+  const innerRadius = computeRingRadius(innerSizes, MIN_INNER_RADIUS);
+  // Outer radius must be far enough from inner ring that no rectangular bounds overlap.
+  // Account for the half-diagonal of the largest inner district extending outward,
+  // plus the half-diagonal of the largest outer district extending inward, plus gap.
+  const maxInnerHalfDiag =
+    innerSizes.length > 0
+      ? Math.max(...innerSizes.map((d) => Math.sqrt(d.width * d.width + d.depth * d.depth) / 2))
+      : 0;
+  const maxOuterHalfDiag =
+    outerSizes.length > 0
+      ? Math.max(...outerSizes.map((d) => Math.sqrt(d.width * d.width + d.depth * d.depth) / 2))
+      : 0;
+  const minOuterFromInner = innerRadius + maxInnerHalfDiag + RING_GAP + maxOuterHalfDiag;
+  const outerRadius = Math.max(minOuterFromInner, computeRingRadius(outerSizes, MIN_OUTER_RADIUS));
 
   const buildings: BuildingLayout[] = [];
   const districts: DistrictLayout[] = [];
 
-  // Track cumulative offsets for the district grid
-  const districtSizes: { width: number; depth: number }[] = [];
+  function placeRing(
+    ring: WorldService[],
+    sizes: { width: number; depth: number }[],
+    radius: number,
+    zone: ServiceZone
+  ): void {
+    const count = ring.length;
+    if (count === 0) return;
 
-  // First pass: compute sizes for each district
-  for (const service of sortedServices) {
-    const serviceEndpoints = endpointsByService.get(service.id) ?? [];
-    const count = serviceEndpoints.length;
-    const cols = Math.max(1, Math.ceil(Math.sqrt(count)));
-    const rows = Math.max(1, Math.ceil(count / cols));
+    for (let i = 0; i < count; i++) {
+      const service = ring[i]!;
+      const size = sizes[i]!;
+      const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
 
-    const width = cols * (BUILDING_BASE_SIZE + BUILDING_GAP) - BUILDING_GAP + DISTRICT_PADDING * 2;
-    const depth = rows * (BUILDING_BASE_SIZE + BUILDING_GAP) - BUILDING_GAP + DISTRICT_PADDING * 2;
+      const centerX = radius * Math.cos(angle);
+      const centerZ = radius * Math.sin(angle);
 
-    districtSizes.push({ width, depth });
-  }
-
-  // Compute max width per column and max depth per row in the district grid
-  const numDistrictRows = Math.ceil(sortedServices.length / DISTRICTS_PER_ROW);
-  const colWidths: number[] = [];
-  const rowDepths: number[] = [];
-
-  for (let i = 0; i < DISTRICTS_PER_ROW; i++) {
-    let maxW = 0;
-    for (let j = 0; j < numDistrictRows; j++) {
-      const idx = j * DISTRICTS_PER_ROW + i;
-      if (idx < districtSizes.length) {
-        maxW = Math.max(maxW, districtSizes[idx]!.width);
-      }
-    }
-    colWidths.push(maxW);
-  }
-
-  for (let j = 0; j < numDistrictRows; j++) {
-    let maxD = 0;
-    for (let i = 0; i < DISTRICTS_PER_ROW; i++) {
-      const idx = j * DISTRICTS_PER_ROW + i;
-      if (idx < districtSizes.length) {
-        maxD = Math.max(maxD, districtSizes[idx]!.depth);
-      }
-    }
-    rowDepths.push(maxD);
-  }
-
-  // Second pass: place districts and buildings
-  for (let sIdx = 0; sIdx < sortedServices.length; sIdx++) {
-    const service = sortedServices[sIdx]!;
-    const col = sIdx % DISTRICTS_PER_ROW;
-    const row = Math.floor(sIdx / DISTRICTS_PER_ROW);
-
-    // Compute district origin (top-left corner)
-    let originX = 0;
-    for (let c = 0; c < col; c++) {
-      originX += (colWidths[c] ?? 0) + DISTRICT_GAP;
-    }
-    let originZ = 0;
-    for (let r = 0; r < row; r++) {
-      originZ += (rowDepths[r] ?? 0) + DISTRICT_GAP;
-    }
-
-    const dWidth = districtSizes[sIdx]!.width;
-    const dDepth = districtSizes[sIdx]!.depth;
-
-    districts.push({
-      serviceId: service.id,
-      tag: service.tag,
-      center: { x: originX + dWidth / 2, z: originZ + dDepth / 2 },
-      bounds: {
-        minX: originX,
-        maxX: originX + dWidth,
-        minZ: originZ,
-        maxZ: originZ + dDepth,
-      },
-    });
-
-    // Place endpoints within district
-    const serviceEndpoints = endpointsByService.get(service.id) ?? [];
-    // Sort endpoints deterministically by path+method
-    const sorted = [...serviceEndpoints].sort((a, b) => {
-      const pathCmp = a.path.localeCompare(b.path);
-      return pathCmp !== 0 ? pathCmp : a.method.localeCompare(b.method);
-    });
-
-    const epCount = sorted.length;
-    const cols = Math.max(1, Math.ceil(Math.sqrt(epCount)));
-
-    for (let eIdx = 0; eIdx < sorted.length; eIdx++) {
-      const ep = sorted[eIdx]!;
-      const eCol = eIdx % cols;
-      const eRow = Math.floor(eIdx / cols);
-
-      const x = originX + DISTRICT_PADDING + eCol * (BUILDING_BASE_SIZE + BUILDING_GAP);
-      const z = originZ + DISTRICT_PADDING + eRow * (BUILDING_BASE_SIZE + BUILDING_GAP);
-
-      const normalizedHeight = maxParams > 0 ? ep.parameterCount / maxParams : 0;
-      const height = MIN_HEIGHT + normalizedHeight * (MAX_HEIGHT - MIN_HEIGHT);
-
-      buildings.push({
-        endpointId: ep.id,
-        position: { x, y: 0, z },
-        height,
-        width: BUILDING_BASE_SIZE,
-        depth: BUILDING_BASE_SIZE,
+      districts.push({
+        serviceId: service.id,
+        tag: service.tag,
+        zone,
+        center: { x: centerX, z: centerZ },
+        bounds: {
+          minX: centerX - size.width / 2,
+          maxX: centerX + size.width / 2,
+          minZ: centerZ - size.depth / 2,
+          maxZ: centerZ + size.depth / 2,
+        },
       });
+
+      const serviceEndpoints = endpointsByService.get(service.id) ?? [];
+      const sorted = [...serviceEndpoints].sort((a, b) => {
+        const pathCmp = a.path.localeCompare(b.path);
+        return pathCmp !== 0 ? pathCmp : a.method.localeCompare(b.method);
+      });
+
+      const cols = Math.max(1, Math.ceil(Math.sqrt(sorted.length)));
+      const originX = centerX - size.width / 2;
+      const originZ = centerZ - size.depth / 2;
+
+      for (let eIdx = 0; eIdx < sorted.length; eIdx++) {
+        const ep = sorted[eIdx]!;
+        const eCol = eIdx % cols;
+        const eRow = Math.floor(eIdx / cols);
+
+        const x = originX + DISTRICT_PADDING + eCol * (BUILDING_BASE_SIZE + BUILDING_GAP);
+        const z = originZ + DISTRICT_PADDING + eRow * (BUILDING_BASE_SIZE + BUILDING_GAP);
+        const normalizedHeight = maxParams > 0 ? ep.parameterCount / maxParams : 0;
+        const height = MIN_HEIGHT + normalizedHeight * (MAX_HEIGHT - MIN_HEIGHT);
+
+        buildings.push({
+          endpointId: ep.id,
+          position: { x, y: 0, z },
+          height,
+          width: BUILDING_BASE_SIZE,
+          depth: BUILDING_BASE_SIZE,
+        });
+      }
     }
   }
 
-  return { buildings, districts };
+  placeRing(innerServices, innerSizes, innerRadius, 'protected-core');
+  placeRing(outerServices, outerSizes, outerRadius, 'public-perimeter');
+
+  return { buildings, districts, gatePosition };
 }

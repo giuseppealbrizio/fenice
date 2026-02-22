@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSelectionStore } from '../stores/selection.store';
 import { useWorldStore } from '../stores/world.store';
-import { METHOD_COLORS, METHOD_LABELS } from '../utils/colors';
+import { METHOD_COLORS, METHOD_LABELS, LINK_STATE_COLORS } from '../utils/colors';
 import type { WorldEndpoint } from '../types/world';
 
 export function SidePanel(): React.JSX.Element | null {
@@ -10,6 +10,8 @@ export function SidePanel(): React.JSX.Element | null {
   const endpoints = useWorldStore((s) => s.endpoints);
   const services = useWorldStore((s) => s.services);
   const edges = useWorldStore((s) => s.edges);
+  const endpointSemantics = useWorldStore((s) => s.endpointSemantics);
+  const endpointOverlays = useWorldStore((s) => s.endpointOverlays);
 
   const endpointMap = useMemo(() => new Map(endpoints.map((e) => [e.id, e])), [endpoints]);
 
@@ -17,6 +19,9 @@ export function SidePanel(): React.JSX.Element | null {
 
   const endpoint = selectedId ? endpointMap.get(selectedId) : undefined;
   if (!endpoint) return null;
+
+  const semantics = endpointSemantics[endpoint.id];
+  const overlay = endpointOverlays[endpoint.id];
 
   const service = serviceMap.get(endpoint.serviceId);
   const methodColor = METHOD_COLORS[endpoint.method];
@@ -152,6 +157,73 @@ export function SidePanel(): React.JSX.Element | null {
         <span style={{ color: '#888' }}>Parameters</span>
         <span>{endpoint.parameterCount}</span>
       </div>
+
+      {/* Semantic state */}
+      {semantics && (
+        <div style={{ marginBottom: '20px' }}>
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '8px',
+            }}
+          >
+            Semantic State
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr',
+              gap: '8px 12px',
+              fontSize: '13px',
+            }}
+          >
+            <span style={{ color: '#888' }}>Link state</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: LINK_STATE_COLORS[semantics.linkState].hex,
+                  display: 'inline-block',
+                }}
+              />
+              {semantics.linkState}
+            </span>
+
+            {semantics.reason && (
+              <>
+                <span style={{ color: '#888' }}>Reason</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                  {semantics.reason}
+                </span>
+              </>
+            )}
+
+            <span style={{ color: '#888' }}>Zone</span>
+            <span>{semantics.zone}</span>
+
+            {overlay?.health && (
+              <>
+                <span style={{ color: '#888' }}>Health</span>
+                <span>{overlay.health.status}</span>
+              </>
+            )}
+
+            {overlay?.metrics && (
+              <>
+                <span style={{ color: '#888' }}>p95</span>
+                <span>{overlay.metrics.p95.toFixed(0)}ms</span>
+                <span style={{ color: '#888' }}>Error rate</span>
+                <span>{(overlay.metrics.errorRate * 100).toFixed(1)}%</span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Related endpoints */}
       {relatedEndpoints.length > 0 && (
