@@ -119,4 +119,20 @@ describe('MetricsClassifier', () => {
     classifier.reset();
     expect(classifier.classify('ep:1')).toBe('unknown');
   });
+
+  it('remove clears one endpoint state without affecting others', () => {
+    classifier.push('ep:1', makeMetrics(600, 0.01));
+    classifier.push('ep:1', makeMetrics(700, 0.01));
+    classifier.push('ep:1', makeMetrics(550, 0.01));
+    classifier.push('ep:2', makeMetrics(200, 0.08));
+    classifier.push('ep:2', makeMetrics(250, 0.09));
+    classifier.push('ep:2', makeMetrics(300, 0.1));
+
+    expect(classifier.classify('ep:1')).toBe('latency_high');
+    expect(classifier.classify('ep:2')).toBe('error_rate_high');
+
+    classifier.remove('ep:1');
+    expect(classifier.classify('ep:1')).toBe('unknown');
+    expect(classifier.classify('ep:2')).toBe('error_rate_high');
+  });
 });

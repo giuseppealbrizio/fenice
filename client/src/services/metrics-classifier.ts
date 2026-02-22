@@ -46,6 +46,10 @@ export class MetricsClassifier {
     return buffer.currentState;
   }
 
+  remove(entityId: string): void {
+    this.buffers.delete(entityId);
+  }
+
   reset(): void {
     this.buffers.clear();
   }

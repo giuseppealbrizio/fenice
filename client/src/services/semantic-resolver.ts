@@ -55,7 +55,7 @@ export function resolve(input: ResolverInput): Omit<SemanticState, 'zone'> {
   }
 
   // R8: core signals missing -> unknown(signal_missing)
-  if (healthState === 'unknown' && metricsState === 'unknown' && policyState === 'unknown') {
+  if (healthState === 'unknown' && metricsState === 'unknown') {
     return { linkState: 'unknown', reason: 'signal_missing' };
   }
 

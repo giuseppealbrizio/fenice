@@ -94,6 +94,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   ...initialState,
 
   setWorldModel: (model, seq, resumeToken) => {
+    // Snapshot replace: clear classifier state to avoid stale metrics on resync.
+    metricsClassifier.reset();
     const newOverlays = maybeFreezeOverlays({});
     const { endpointSemantics, authGate } = computeAllSemantics(
       model.endpoints,
@@ -158,6 +160,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
           break;
         }
         case 'endpoint.removed':
+          delete overlays[event.entityId];
+          metricsClassifier.remove(event.entityId);
           endpoints = endpoints.filter((e) => e.id !== event.entityId);
           break;
         case 'edge.upserted': {

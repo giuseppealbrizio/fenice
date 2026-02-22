@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useWorldStore } from '../stores/world.store';
 import type { WorldClientMessage, WorldServerMessage } from '../types/world-ws';
+import type { SessionState } from '../types/semantic';
 
 const WS_RECONNECT_DELAY_MS = 3_000;
 const WS_PING_INTERVAL_MS = 25_000;
@@ -9,6 +10,25 @@ const KPI_LOG_INTERVAL = 20;
 
 function hasMessageType(data: unknown): data is { type: string } {
   return typeof data === 'object' && data !== null && 'type' in data;
+}
+
+function deriveSessionState(token: string): SessionState {
+  if (!token) return 'none';
+
+  const parts = token.split('.');
+  if (parts.length < 2) return 'expired';
+
+  try {
+    const base64url = parts[1]!;
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const decoded = atob(padded);
+    const payload = JSON.parse(decoded) as { exp?: unknown };
+    if (typeof payload.exp !== 'number') return 'expired';
+    return Date.now() >= payload.exp * 1000 ? 'expired' : 'valid';
+  } catch {
+    return 'expired';
+  }
 }
 
 export function useWorldSocket(token: string): void {
@@ -26,6 +46,7 @@ export function useWorldSocket(token: string): void {
   const setConnected = useWorldStore((s) => s.setConnected);
   const setLoading = useWorldStore((s) => s.setLoading);
   const setError = useWorldStore((s) => s.setError);
+  const setSessionState = useWorldStore((s) => s.setSessionState);
 
   const logKpiP95 = useCallback(() => {
     const sorted = [...kpiSamples.current].sort((a, b) => a - b);
@@ -150,6 +171,9 @@ export function useWorldSocket(token: string): void {
         }
 
         case 'world.error':
+          if (data.code === 'INVALID_TOKEN' || data.code === 'MISSING_TOKEN') {
+            setSessionState('expired');
+          }
           setError(`[${data.code}] ${data.message}`);
           break;
 
@@ -187,7 +211,11 @@ export function useWorldSocket(token: string): void {
       if (disposedRef.current || wsRef.current !== ws) return;
       setError('WebSocket connection error');
     };
-  }, [token, setWorldModel, setConnected, setLoading, setError, logKpiP95]);
+  }, [token, setWorldModel, setConnected, setLoading, setError, setSessionState, logKpiP95]);
+
+  useEffect(() => {
+    setSessionState(deriveSessionState(token));
+  }, [token, setSessionState]);
 
   useEffect(() => {
     disposedRef.current = false;

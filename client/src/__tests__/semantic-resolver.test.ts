@@ -205,6 +205,18 @@ describe('SemanticResolver — precedence', () => {
     expect(result.linkState).toBe('degraded');
     expect(result.reason).toBe('service_unhealthy_soft');
   });
+
+  it('returns unknown on missing core signals even when policy defaults to allow', () => {
+    const result = resolve({
+      hasAuth: false,
+      sessionState: 'valid',
+      healthState: 'unknown',
+      metricsState: 'unknown',
+      policyState: 'allow',
+    });
+    expect(result.linkState).toBe('unknown');
+    expect(result.reason).toBe('signal_missing');
+  });
 });
 
 describe('SemanticResolver — resolveEndpoint (composed path)', () => {
