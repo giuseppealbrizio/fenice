@@ -4,21 +4,23 @@ import { computeCityLayout } from '../services/layout.service';
 import { Building } from './Building';
 import { Edges } from './Edges';
 import { District } from './District';
+import { AuthGate } from './AuthGate';
 
 export function City(): React.JSX.Element | null {
   const services = useWorldStore((s) => s.services);
   const endpoints = useWorldStore((s) => s.endpoints);
   const edges = useWorldStore((s) => s.edges);
+  const endpointSemantics = useWorldStore((s) => s.endpointSemantics);
 
   const layout = useMemo(() => computeCityLayout(services, endpoints), [services, endpoints]);
 
-  // Build a lookup map for endpoints — must be above early return (hooks rule)
   const endpointMap = useMemo(() => new Map(endpoints.map((e) => [e.id, e])), [endpoints]);
 
   if (endpoints.length === 0) return null;
 
   return (
     <group>
+      <AuthGate position={layout.gatePosition} />
       {layout.districts.map((d) => (
         <District key={d.serviceId} layout={d} />
       ))}
@@ -27,7 +29,13 @@ export function City(): React.JSX.Element | null {
         if (!endpoint) return null;
         return <Building key={b.endpointId} layout={b} endpoint={endpoint} />;
       })}
-      <Edges edges={edges} buildingLayouts={layout.buildings} />
+      <Edges
+        edges={edges}
+        buildingLayouts={layout.buildings}
+        endpointSemantics={endpointSemantics}
+        endpointMap={endpointMap}
+        gatePosition={layout.gatePosition}
+      />
     </group>
   );
 }
