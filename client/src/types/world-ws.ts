@@ -4,6 +4,7 @@
  */
 
 import type { WorldModel } from './world';
+import type { WorldDeltaEvent } from './world-delta';
 
 // ─── Client → Server messages ───────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export type WorldDeltaMessage = {
   schemaVersion: number;
   seq: number;
   ts: string;
-  events: unknown[];
+  events: WorldDeltaEvent[];
 };
 
 export type WorldErrorMessage = {

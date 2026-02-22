@@ -22,7 +22,7 @@ function getJwtSecret(): string {
   return jwtSecret;
 }
 
-function getWorldWsManager(): WorldWsManager {
+export function getWorldWsManager(): WorldWsManager {
   if (!worldManager) {
     const env = loadEnv();
     worldManager = new WorldWsManager(env.WORLD_WS_BUFFER_SIZE, env.WORLD_WS_RESUME_TTL_MS);
@@ -30,7 +30,7 @@ function getWorldWsManager(): WorldWsManager {
   return worldManager;
 }
 
-function getProjectionService(): ProjectionService {
+export function getProjectionService(): ProjectionService {
   projectionService ??= new ProjectionService();
   return projectionService;
 }

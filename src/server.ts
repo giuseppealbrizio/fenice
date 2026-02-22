@@ -4,6 +4,9 @@ import mongoose from 'mongoose';
 import { app, injectWebSocket } from './index.js';
 import { loadEnv } from './config/env.js';
 import { createLogger } from './utils/logger.js';
+import { MockDeltaProducer } from './services/mock-delta-producer.js';
+import { getWorldWsManager, getProjectionService } from './routes/world-ws.routes.js';
+import type { WorldModel } from './schemas/world.schema.js';
 
 dotenv.config();
 
@@ -29,10 +32,29 @@ async function start(): Promise<void> {
     injectWebSocket(server);
     logger.info('WebSocket support enabled');
 
+    // Delta producer — singleton, started once at boot
+    const worldMgr = getWorldWsManager();
+    const projectionSvc = getProjectionService();
+    const deltaProducer = new MockDeltaProducer(worldMgr, projectionSvc, {
+      metricsIntervalMs: env.DELTA_METRICS_INTERVAL_MS,
+      diffIntervalMs: env.DELTA_DIFF_INTERVAL_MS,
+    });
+
+    const fetchSpec = async (): Promise<WorldModel> => {
+      const res = await app.request('/openapi');
+      const spec: unknown = await res.json();
+      return projectionSvc.buildWorldModel(spec);
+    };
+
+    deltaProducer.start(fetchSpec);
+    logger.info('Delta producer started');
+
     // Graceful shutdown
     const shutdown = async (signal: string): Promise<void> => {
       logger.info({ signal }, 'Received shutdown signal, closing gracefully...');
       try {
+        deltaProducer.stop();
+        logger.info('Delta producer stopped');
         await mongoose.disconnect();
         logger.info('MongoDB disconnected');
       } catch (err) {
