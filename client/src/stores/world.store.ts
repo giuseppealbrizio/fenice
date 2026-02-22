@@ -29,7 +29,7 @@ interface WorldState {
   reset: () => void;
 }
 
-const isDev = typeof process !== 'undefined' ? process.env?.['NODE_ENV'] !== 'production' : true;
+const isDev = import.meta.env.DEV || import.meta.env.MODE === 'test';
 
 function maybeFreezeOverlays(
   overlays: Record<string, EndpointOverlay>
