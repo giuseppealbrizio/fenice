@@ -39,6 +39,11 @@ Stato: M1 completato (2026-02-22), M2 in avvio con sequenza M2A -> M2B -> M2C.
 4. `FENICE_3D_World_Decision_Log.md`
 5. `FENICE_3D_World_Ritmo_Operativo.md`
 
+## M2D review toolkit
+1. `FENICE_3D_World_M2D_PR_Review_Checklist.md`
+2. `FENICE_3D_World_M2D_Visual_QA_Rubric.md`
+3. `../plans/2026-02-22-m2d-client-kpi-harness-plan.md`
+
 ## Maintenance notes
 1. Ogni nuova milestone va aggiunta qui.
 2. Il decision log va aggiornato ad ogni decisione architetturale.
