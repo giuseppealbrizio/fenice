@@ -17,18 +17,17 @@ Consolidare fondazioni M1: protocollo v1 approvato + city statica funzionante da
 | W1-T05 | Bootstrap client React+R3F | Claude | 1d | DONE | - |
 | W1-T06 | Parser OpenAPI -> world model | Claude | 2d | DONE | W1-T05 |
 | W1-T07 | Render city statica (buildings+edges) | Claude | 2d | DONE | W1-T06 |
+| W1-T11 | Demo dry run end-to-end | Claude | 1d | DONE | W1-T07,W1-T08 |
 
 ## Next (P1)
 | ID | Task | Owner | ETA | Status | Dipendenze |
 |---|---|---|---|---|---|
 | W1-T08 | Side panel dettagli endpoint | Claude | 1d | DONE | W1-T07 |
 | W1-T09 | Resume token + seq ordering | Claude | 1d | DONE | W1-T04 |
-| W1-T10 | Contract tests protocollo producer/consumer | Claude | 1d | PLANNED | W1-T02,W1-T09 |
+| W1-T10 | Contract tests protocollo producer/consumer | Claude | 1d | DONE | W1-T02,W1-T09 |
 
 ## Blocked
-| ID | Task | Owner | Bloccato da |
-|---|---|---|---|
-| W1-T11 | Demo dry run end-to-end | Shared | W1-T07,W1-T08 |
+_Nessun task bloccato._
 
 ## Done
 - W1-T01: ADR-001/002/003 approvati (2026-02-21)
@@ -40,6 +39,14 @@ Consolidare fondazioni M1: protocollo v1 approvato + city statica funzionante da
 - W1-T06: Types, WS connection, Zustand stores (2026-02-22)
 - W1-T07: City statica con buildings, edges, districts (2026-02-22)
 - W1-T08: Side panel dettagli endpoint (2026-02-22)
+- W1-T10: Contract tests WS producer/consumer — 31 test (2026-02-22)
+- W1-T11: Demo dry run e2e — 23 test acceptance criteria M1 verificati (2026-02-22)
+
+## Sprint Summary
+**Sprint COMPLETATO** — 11/11 task chiusi (2026-02-22)
+- Total test: 397 (373 backend/e2e + 24 client)
+- Acceptance criteria M1: tutti verificati programmaticamente
+- KPI M1: build success 100%, p95 init < 1200ms, 0 errori bloccanti
 
 ## Daily update template
 ```md

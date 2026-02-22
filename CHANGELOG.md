@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Side panel with endpoint details (path, method, summary, auth, params, related endpoints)
 - Client CI job (lint, typecheck, test, build) in GitHub Actions
 - Client unit tests for layout service, Zustand store, and color mappings (24 new tests)
+- WS protocol contract tests validating producer/consumer message schemas (31 tests)
+- Demo dry run e2e tests verifying M1 acceptance criteria: 100% endpoint mapping, zero crashes, performance under 1.2s, correct metadata, building non-overlap (23 tests)
 
 ## [0.3.0] - 2026-02-21
 
