@@ -27,7 +27,9 @@ export function useWorldSocket(token: string): void {
 
     ws.onopen = () => {
       setConnected(true);
-      setLoading(true);
+      // Only show loading spinner on first connection (no data yet)
+      const hasData = useWorldStore.getState().endpoints.length > 0;
+      if (!hasData) setLoading(true);
 
       const msg: WorldClientMessage = resumeTokenRef.current
         ? {
