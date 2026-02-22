@@ -4,6 +4,8 @@ import type { WorldClientMessage, WorldServerMessage } from '../types/world-ws';
 
 const WS_RECONNECT_DELAY_MS = 3_000;
 const WS_PING_INTERVAL_MS = 25_000;
+const KPI_RING_SIZE = 100;
+const KPI_LOG_INTERVAL = 20;
 
 function hasMessageType(data: unknown): data is { type: string } {
   return typeof data === 'object' && data !== null && 'type' in data;
@@ -16,11 +18,22 @@ export function useWorldSocket(token: string): void {
   const resumeTokenRef = useRef<string | null>(null);
   const lastSeqRef = useRef<number>(0);
   const disposedRef = useRef(false);
+  const kpiSamples = useRef<number[]>([]);
+  const kpiCounter = useRef(0);
+  const reconnectStartRef = useRef<number | null>(null);
 
   const setWorldModel = useWorldStore((s) => s.setWorldModel);
   const setConnected = useWorldStore((s) => s.setConnected);
   const setLoading = useWorldStore((s) => s.setLoading);
   const setError = useWorldStore((s) => s.setError);
+
+  const logKpiP95 = useCallback(() => {
+    const sorted = [...kpiSamples.current].sort((a, b) => a - b);
+    const idx = Math.floor(sorted.length * 0.95);
+    const p95 = sorted[idx] ?? 0;
+    // eslint-disable-next-line no-console -- intentional KPI diagnostic output
+    console.log(`[KPI] event->render p95: ${p95}ms (${sorted.length} samples)`);
+  }, []);
 
   const connect = useCallback(() => {
     if (disposedRef.current) return;
@@ -91,6 +104,12 @@ export function useWorldSocket(token: string): void {
           if (data.resumeToken) {
             resumeTokenRef.current = data.resumeToken;
           }
+          if (reconnectStartRef.current !== null) {
+            const recoverMs = Date.now() - reconnectStartRef.current;
+            // eslint-disable-next-line no-console -- intentional KPI diagnostic output
+            console.log(`[KPI] reconnect recover: ${recoverMs}ms`);
+            reconnectStartRef.current = null;
+          }
           break;
 
         case 'world.snapshot':
@@ -98,10 +117,37 @@ export function useWorldSocket(token: string): void {
           setWorldModel(data.data, data.seq, resumeTokenRef.current);
           break;
 
-        case 'world.delta':
-          lastSeqRef.current = data.seq;
-          // Delta handling is M2 scope
+        case 'world.delta': {
+          const applyDelta = useWorldStore.getState().applyDelta;
+          const result = applyDelta(data);
+
+          if (result === 'applied') {
+            lastSeqRef.current = data.seq;
+
+            // KPI: event->render latency (vincolo 4: Date.now - Date.parse, no perf.now)
+            const serverTs = Date.parse(data.ts);
+            if (!Number.isNaN(serverTs)) {
+              const latencyMs = Date.now() - serverTs;
+              kpiSamples.current.push(latencyMs);
+              if (kpiSamples.current.length > KPI_RING_SIZE) {
+                kpiSamples.current.shift();
+              }
+              kpiCounter.current += 1;
+              if (kpiCounter.current % KPI_LOG_INTERVAL === 0) {
+                logKpiP95();
+              }
+            }
+          } else if (result === 'resync') {
+            // Gap detected: force full snapshot by re-subscribing without resume
+            resumeTokenRef.current = null;
+            lastSeqRef.current = 0;
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'world.subscribe' } satisfies WorldClientMessage));
+            }
+          }
+          // 'ignored' — no action needed
           break;
+        }
 
         case 'world.error':
           setError(`[${data.code}] ${data.message}`);
@@ -121,6 +167,7 @@ export function useWorldSocket(token: string): void {
       const isCurrentSocket = wsRef.current === ws;
       if (!isCurrentSocket) return;
 
+      reconnectStartRef.current = Date.now();
       wsRef.current = null;
       setConnected(false);
       if (pingIntervalRef.current) {
@@ -140,7 +187,7 @@ export function useWorldSocket(token: string): void {
       if (disposedRef.current || wsRef.current !== ws) return;
       setError('WebSocket connection error');
     };
-  }, [token, setWorldModel, setConnected, setLoading, setError]);
+  }, [token, setWorldModel, setConnected, setLoading, setError, logKpiP95]);
 
   useEffect(() => {
     disposedRef.current = false;
