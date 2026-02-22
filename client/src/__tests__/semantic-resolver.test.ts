@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { resolve, assignZone, resolveAuthGate } from '../services/semantic-resolver';
+import {
+  resolve,
+  assignZone,
+  resolveEndpoint,
+  resolveAuthGate,
+} from '../services/semantic-resolver';
 import type { ResolverInput } from '../types/semantic';
 
 // ─── Acceptance Matrix S01-S10 ──────────────────────────────────────────────
@@ -199,6 +204,34 @@ describe('SemanticResolver — precedence', () => {
     });
     expect(result.linkState).toBe('degraded');
     expect(result.reason).toBe('service_unhealthy_soft');
+  });
+});
+
+describe('SemanticResolver — resolveEndpoint (composed path)', () => {
+  it('resolveEndpoint composes resolve + assignZone correctly', () => {
+    const result = resolveEndpoint({
+      hasAuth: true,
+      sessionState: 'valid',
+      healthState: 'healthy',
+      metricsState: 'normal',
+      policyState: 'allow',
+    });
+    expect(result.linkState).toBe('ok');
+    expect(result.zone).toBe('protected-core');
+    expect(result.reason).toBeUndefined();
+  });
+
+  it('resolveEndpoint returns zone with blocked state', () => {
+    const result = resolveEndpoint({
+      hasAuth: true,
+      sessionState: 'none',
+      healthState: 'healthy',
+      metricsState: 'normal',
+      policyState: 'allow',
+    });
+    expect(result.linkState).toBe('blocked');
+    expect(result.reason).toBe('auth_required_no_session');
+    expect(result.zone).toBe('protected-core');
   });
 });
 
