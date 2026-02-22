@@ -1,17 +1,16 @@
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { Scene } from './components/Scene';
+import { HUD } from './components/HUD';
+import { useWorldSocket } from './hooks/useWorldSocket';
+
+const WS_TOKEN = import.meta.env.VITE_WS_TOKEN as string | undefined;
 
 export function App(): React.JSX.Element {
+  useWorldSocket(WS_TOKEN ?? '');
+
   return (
-    <Canvas camera={{ position: [5, 5, 5], fov: 50 }}>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 5]} intensity={0.8} />
-      <mesh>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#4A90D9" />
-      </mesh>
-      <gridHelper args={[20, 20, '#333', '#222']} />
-      <OrbitControls />
-    </Canvas>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      <Scene />
+      <HUD />
+    </div>
   );
 }
