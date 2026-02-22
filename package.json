@@ -21,6 +21,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "validate": "npm run lint && npm run typecheck && npm run test",
+    "export-schema": "tsx scripts/export-json-schema.ts",
+    "check-schema-sync": "tsx scripts/check-schema-sync.ts",
     "prepare": "husky"
   },
   "keywords": [
