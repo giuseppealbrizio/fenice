@@ -1,4 +1,4 @@
-import { Text, Line } from '@react-three/drei';
+import { Text, Line, Billboard } from '@react-three/drei';
 import type { DistrictLayout } from '../services/layout.service';
 import { GROUND_Y, ZONE_LAYOUT_CONFIG } from '../utils/constants';
 import { ZONE_STYLES } from '../utils/colors';
@@ -100,16 +100,25 @@ export function District({ layout }: DistrictProps): React.JSX.Element {
         </>
       )}
 
-      {/* Service tag label */}
-      <Text
-        position={[layout.bounds.minX + 0.5, 0.1, layout.bounds.minZ - 0.3]}
-        fontSize={0.6}
-        color="#888888"
-        anchorX="left"
-        anchorY="middle"
+      {/* Service tag label - billboard to avoid mirrored/covered text */}
+      <Billboard
+        follow
+        lockX={false}
+        lockY={false}
+        lockZ={false}
+        position={[layout.center.x, 0.16, layout.bounds.minZ - 0.45]}
       >
-        {layout.tag}
-      </Text>
+        <Text
+          fontSize={0.62}
+          color="#b3c5ff"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.02}
+          outlineColor="#050510"
+        >
+          {layout.tag}
+        </Text>
+      </Billboard>
     </group>
   );
 }

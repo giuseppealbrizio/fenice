@@ -71,14 +71,17 @@ export function Edges({
 
         const isDashed = style.edgeStyle === 'dashed';
         const dashProps = isDashed ? { dashSize: 0.5, gapSize: 0.3 } : {};
+        const lineWidth = isDashed ? 1 : 1.5;
+        const routeWidth = isAuthGated ? lineWidth * 0.85 : lineWidth;
+        const routeOpacity = isAuthGated ? Math.max(0.2, style.opacity * 0.7) : style.opacity;
 
         return (
           <Line
             key={edge.id}
             points={points}
             color={style.hex}
-            lineWidth={isDashed ? 1 : 1.5}
-            opacity={style.opacity}
+            lineWidth={routeWidth}
+            opacity={routeOpacity}
             transparent
             dashed={isDashed}
             {...dashProps}

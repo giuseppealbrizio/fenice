@@ -130,6 +130,24 @@ export function HUD(): React.JSX.Element {
           </div>
         ))}
       </div>
+
+      {/* Routing hint legend */}
+      <div
+        style={{
+          marginTop: '14px',
+          borderTop: '1px solid #333',
+          paddingTop: '10px',
+          fontSize: '10px',
+          color: '#7f8fb5',
+          maxWidth: '210px',
+          lineHeight: 1.4,
+        }}
+      >
+        <div style={{ textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+          Routing
+        </div>
+        <div>Lines passing through the center gate are auth-gated routes.</div>
+      </div>
     </div>
   );
 }
