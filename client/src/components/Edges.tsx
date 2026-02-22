@@ -14,8 +14,8 @@ interface EdgesProps {
 }
 
 /** Determine worst linkState between two endpoints for edge coloring */
-function worstLinkState(a: LinkState | undefined, b: LinkState | undefined): LinkState {
-  const precedence: LinkState[] = ['blocked', 'unknown', 'degraded', 'ok'];
+export function worstLinkState(a: LinkState | undefined, b: LinkState | undefined): LinkState {
+  const precedence: LinkState[] = ['blocked', 'degraded', 'ok', 'unknown'];
   const aIdx = precedence.indexOf(a ?? 'unknown');
   const bIdx = precedence.indexOf(b ?? 'unknown');
   return precedence[Math.min(aIdx, bIdx)] ?? 'unknown';
