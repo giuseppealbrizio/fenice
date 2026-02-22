@@ -2,6 +2,18 @@ import { create } from 'zustand';
 import type { WorldService, WorldEndpoint, WorldEdge, WorldModel } from '../types/world';
 import type { WorldDeltaMessage } from '../types/world-ws';
 import type { EndpointMetrics, EndpointHealth } from '../types/world-delta';
+import type {
+  SessionState,
+  SemanticState,
+  AuthGateState,
+  MetricsState,
+  HealthState,
+} from '../types/semantic';
+import { DEFAULT_METRICS_CONFIG } from '../types/semantic';
+import { resolveEndpoint, resolveAuthGate } from '../services/semantic-resolver';
+import { MetricsClassifier } from '../services/metrics-classifier';
+
+const metricsClassifier = new MetricsClassifier(DEFAULT_METRICS_CONFIG);
 
 export interface EndpointOverlay {
   metrics?: EndpointMetrics | undefined;
@@ -20,11 +32,15 @@ interface WorldState {
   loading: boolean;
   error: string | null;
   endpointOverlays: Record<string, EndpointOverlay>;
+  sessionState: SessionState;
+  endpointSemantics: Record<string, SemanticState>;
+  authGate: AuthGateState;
 
   setWorldModel: (model: WorldModel, seq: number, resumeToken: string | null) => void;
   setConnected: (connected: boolean) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setSessionState: (state: SessionState) => void;
   applyDelta: (delta: WorldDeltaMessage) => DeltaResult;
   reset: () => void;
 }
@@ -38,6 +54,27 @@ function maybeFreezeOverlays(
   return overlays;
 }
 
+function computeAllSemantics(
+  endpoints: WorldEndpoint[],
+  overlays: Record<string, EndpointOverlay>,
+  sessionState: SessionState
+): { endpointSemantics: Record<string, SemanticState>; authGate: AuthGateState } {
+  const endpointSemantics: Record<string, SemanticState> = {};
+  for (const ep of endpoints) {
+    const overlay = overlays[ep.id];
+    const healthState: HealthState = overlay?.health?.status ?? 'unknown';
+    const metricsState: MetricsState = metricsClassifier.classify(ep.id);
+    endpointSemantics[ep.id] = resolveEndpoint({
+      hasAuth: ep.hasAuth,
+      sessionState,
+      healthState,
+      metricsState,
+      policyState: 'allow', // default until real signal
+    });
+  }
+  return { endpointSemantics, authGate: resolveAuthGate(sessionState) };
+}
+
 const initialState = {
   services: [] as WorldService[],
   endpoints: [] as WorldEndpoint[],
@@ -48,12 +85,23 @@ const initialState = {
   loading: true,
   error: null,
   endpointOverlays: maybeFreezeOverlays({}) as Record<string, EndpointOverlay>,
+  sessionState: 'none' as SessionState,
+  endpointSemantics: {} as Record<string, SemanticState>,
+  authGate: resolveAuthGate('none'),
 };
 
 export const useWorldStore = create<WorldState>((set, get) => ({
   ...initialState,
 
-  setWorldModel: (model, seq, resumeToken) =>
+  setWorldModel: (model, seq, resumeToken) => {
+    // Snapshot replace: clear classifier state to avoid stale metrics on resync.
+    metricsClassifier.reset();
+    const newOverlays = maybeFreezeOverlays({});
+    const { endpointSemantics, authGate } = computeAllSemantics(
+      model.endpoints,
+      {},
+      get().sessionState
+    );
     set({
       services: model.services,
       endpoints: model.endpoints,
@@ -62,14 +110,27 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       resumeToken,
       loading: false,
       error: null,
-      endpointOverlays: maybeFreezeOverlays({}),
-    }),
+      endpointOverlays: newOverlays,
+      endpointSemantics,
+      authGate,
+    });
+  },
 
   setConnected: (connected) => set({ connected }),
 
   setLoading: (loading) => set({ loading }),
 
   setError: (error) => set({ error, loading: false }),
+
+  setSessionState: (sessionState: SessionState) => {
+    const state = get();
+    const { endpointSemantics, authGate } = computeAllSemantics(
+      state.endpoints,
+      state.endpointOverlays,
+      sessionState
+    );
+    set({ sessionState, endpointSemantics, authGate });
+  },
 
   applyDelta: (delta: WorldDeltaMessage): DeltaResult => {
     const state = get();
@@ -99,6 +160,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
           break;
         }
         case 'endpoint.removed':
+          delete overlays[event.entityId];
+          metricsClassifier.remove(event.entityId);
           endpoints = endpoints.filter((e) => e.id !== event.entityId);
           break;
         case 'edge.upserted': {
@@ -113,6 +176,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         case 'endpoint.metrics.updated': {
           const existing = overlays[event.entityId];
           overlays[event.entityId] = { ...existing, metrics: event.payload };
+          metricsClassifier.push(event.entityId, event.payload);
           break;
         }
         case 'endpoint.health.updated': {
@@ -123,15 +187,26 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       }
     }
 
+    const { endpointSemantics, authGate } = computeAllSemantics(
+      endpoints,
+      overlays,
+      state.sessionState
+    );
+
     set({
       services,
       endpoints,
       edges,
       endpointOverlays: maybeFreezeOverlays(overlays),
+      endpointSemantics,
+      authGate,
       lastSeq: delta.seq,
     });
     return 'applied';
   },
 
-  reset: () => set(initialState),
+  reset: () => {
+    metricsClassifier.reset();
+    set(initialState);
+  },
 }));
