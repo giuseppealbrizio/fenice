@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- AI Builder pipeline: prompt-to-PR code generation via Claude API with tool use
+- Builder routes: `POST /api/v1/builder/generate`, `GET /api/v1/builder/jobs/:id`, `GET /api/v1/builder/jobs`
+- Builder job model with MongoDB audit trail (status tracking across 8 pipeline states)
+- Scope policy engine: path whitelist/blacklist, forbidden path detection, dangerous content scanning
+- Context reader: builds LLM context bundle from project codebase (CLAUDE.md, schemas, models, services, routes)
+- Code generator: multi-turn Claude API loop with write_file, modify_file, read_file tools
+- Self-repair: validation failure triggers one repair attempt via Claude before failing
+- Project validator: runs typecheck, lint, and test via child_process with 60s timeout
+- File writer with scope policy enforcement and recursive directory creation
+- Git operations: branch creation, commit with conventional format, push, cleanup via simple-git
+- GitHub PR creation via Octokit with structured body (summary, file lists, risk checklist)
+- Builder world notifier: emits `builder.progress` delta events and synthetic service/endpoint deltas via WebSocket
+- `builder.progress` event type added to WorldDeltaEvent discriminated union (9th event type)
+- Builder tools added to MCP manifest (builder_generate, builder_get_job, builder_list_jobs)
+- Builder env vars: `BUILDER_ENABLED`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO`, `BUILDER_RATE_LIMIT_MAX`, `BUILDER_RATE_LIMIT_WINDOW_MS`
+- Pino logger redaction for sensitive keys (ANTHROPIC_API_KEY, GITHUB_TOKEN, JWT secrets)
+- Builder kill switch: `BUILDER_ENABLED=false` returns 503
+- JWT + admin RBAC + dedicated rate limit (5 req/hour) on builder endpoints
+- New dependencies: `@anthropic-ai/sdk`, `simple-git`, `@octokit/rest`
+- 75+ new unit and integration tests for builder subsystem (536 total tests, 61 files)
+
 - World model Zod schemas (WorldService, WorldEndpoint, WorldEdge, WorldModel) with schema version 1
 - ProjectionService for OpenAPI 3.x to WorldModel transformation (tag grouping, pairwise edges, auth detection)
 - World WS protocol schemas (subscribe, snapshot, delta, ping/pong, error) with discriminated unions

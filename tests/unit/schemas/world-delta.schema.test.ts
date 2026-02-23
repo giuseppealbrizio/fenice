@@ -109,7 +109,7 @@ describe('World delta event schemas', () => {
     });
   });
 
-  describe('WorldDeltaEventSchema — all 8 event types', () => {
+  describe('WorldDeltaEventSchema — all 9 event types', () => {
     it('should validate service.upserted', () => {
       const result = WorldDeltaEventSchema.safeParse({
         type: 'service.upserted',
@@ -178,6 +178,19 @@ describe('World delta event schemas', () => {
       });
       expect(result.success).toBe(true);
     });
+
+    it('should validate builder.progress', () => {
+      const result = WorldDeltaEventSchema.safeParse({
+        type: 'builder.progress',
+        entityId: 'job-123',
+        payload: {
+          jobId: 'job-123',
+          status: 'generating',
+          message: 'Generating code via Claude API',
+        },
+      });
+      expect(result.success).toBe(true);
+    });
   });
 
   describe('WorldDeltaEventSchema — rejection cases', () => {
@@ -229,6 +242,19 @@ describe('World delta event schemas', () => {
         type: 'endpoint.health.updated',
         entityId: 'endpoint:get:/api/v1/health',
         payload: { status: 'unhealthy' },
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject builder.progress with invalid status', () => {
+      const result = WorldDeltaEventSchema.safeParse({
+        type: 'builder.progress',
+        entityId: 'job-123',
+        payload: {
+          jobId: 'job-123',
+          status: 'invalid_status',
+          message: 'Nope',
+        },
       });
       expect(result.success).toBe(false);
     });

@@ -19,4 +19,13 @@ describe('MCP Discovery Endpoint', () => {
     expect(toolNames).toContain('auth_signup');
     expect(toolNames).toContain('auth_login');
   });
+
+  it('should include builder tools', async () => {
+    const res = await app.request('/api/v1/mcp');
+    const body = await res.json();
+    const toolNames = body.tools.map((t: any) => t.name);
+    expect(toolNames).toContain('builder_generate');
+    expect(toolNames).toContain('builder_get_job');
+    expect(toolNames).toContain('builder_list_jobs');
+  });
 });

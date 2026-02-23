@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { WorldServiceSchema, WorldEndpointSchema, WorldEdgeSchema } from './world.schema.js';
+import { BuilderJobStatusEnum } from './builder.schema.js';
 
 // ─── Health status (aligned M2B) ─────────────────────────────────────────────
 
@@ -68,7 +69,20 @@ export const EndpointHealthUpdatedEventSchema = z.object({
   payload: EndpointHealthPayloadSchema,
 });
 
-// ─── Discriminated union of all 8 event types ────────────────────────────────
+// ─── Builder progress event ─────────────────────────────────────────────────
+
+export const BuilderProgressEventSchema = z.object({
+  type: z.literal('builder.progress'),
+  entityId: z.string().min(1), // jobId
+  payload: z.object({
+    jobId: z.string().min(1),
+    status: BuilderJobStatusEnum,
+    message: z.string(),
+    detail: z.string().optional(),
+  }),
+});
+
+// ─── Discriminated union of all 9 event types ────────────────────────────────
 
 export const WorldDeltaEventSchema = z.discriminatedUnion('type', [
   ServiceUpsertedEventSchema,
@@ -79,6 +93,7 @@ export const WorldDeltaEventSchema = z.discriminatedUnion('type', [
   EdgeRemovedEventSchema,
   EndpointMetricsUpdatedEventSchema,
   EndpointHealthUpdatedEventSchema,
+  BuilderProgressEventSchema,
 ]);
 
 export type WorldDeltaEvent = z.infer<typeof WorldDeltaEventSchema>;

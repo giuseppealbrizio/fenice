@@ -62,8 +62,8 @@ describe('World WS integration (full subscribe flow)', () => {
       data: { services: unknown[]; endpoints: unknown[]; edges: unknown[] };
     };
 
-    // Should have 4 real services
-    expect(snapshot.data.services).toHaveLength(4);
+    // Should have 5 real services (Auth, Builder, Health, Upload, Users)
+    expect(snapshot.data.services).toHaveLength(5);
 
     // Should have 15+ real endpoints
     expect(snapshot.data.endpoints.length).toBeGreaterThanOrEqual(15);

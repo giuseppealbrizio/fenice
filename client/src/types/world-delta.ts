@@ -4,6 +4,7 @@
  */
 
 import type { WorldService, WorldEndpoint, WorldEdge } from './world';
+import type { BuilderProgressPayload } from './builder';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'down';
 
@@ -26,4 +27,5 @@ export type WorldDeltaEvent =
   | { type: 'edge.upserted'; entityId: string; payload: WorldEdge }
   | { type: 'edge.removed'; entityId: string }
   | { type: 'endpoint.metrics.updated'; entityId: string; payload: EndpointMetrics }
-  | { type: 'endpoint.health.updated'; entityId: string; payload: EndpointHealth };
+  | { type: 'endpoint.health.updated'; entityId: string; payload: EndpointHealth }
+  | { type: 'builder.progress'; entityId: string; payload: BuilderProgressPayload };

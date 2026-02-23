@@ -60,6 +60,15 @@ export const EnvSchema = z.object({
   // Delta Producer
   DELTA_METRICS_INTERVAL_MS: z.coerce.number().default(5_000),
   DELTA_DIFF_INTERVAL_MS: z.coerce.number().default(30_000),
+
+  // Builder
+  BUILDER_ENABLED: z.coerce.boolean().default(false),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  GITHUB_TOKEN: z.string().optional(),
+  GITHUB_OWNER: z.string().optional(),
+  GITHUB_REPO: z.string().optional(),
+  BUILDER_RATE_LIMIT_MAX: z.coerce.number().default(5),
+  BUILDER_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(3_600_000), // 1 hour
 });
 
 export type Env = z.infer<typeof EnvSchema>;

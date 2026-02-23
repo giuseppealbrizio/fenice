@@ -1,0 +1,71 @@
+import { z } from 'zod';
+
+export const BuilderJobStatusEnum = z.enum([
+  'queued',
+  'reading_context',
+  'generating',
+  'writing_files',
+  'validating',
+  'creating_pr',
+  'completed',
+  'failed',
+]);
+
+export const BuilderOptionsSchema = z
+  .object({
+    dryRun: z.boolean().default(false),
+    targetTag: z.string().min(1).max(50).optional(),
+    includeModel: z.boolean().default(true),
+    includeTests: z.boolean().default(true),
+  })
+  .strict();
+
+export const BuilderPromptSchema = z.object({
+  prompt: z.string().min(10).max(2000),
+  options: BuilderOptionsSchema.optional(),
+});
+
+export const BuilderGeneratedFileSchema = z.object({
+  path: z.string().min(1),
+  content: z.string(),
+  action: z.enum(['created', 'modified']),
+});
+
+export const BuilderJobResultSchema = z.object({
+  files: z.array(BuilderGeneratedFileSchema),
+  prUrl: z.string().optional(),
+  prNumber: z.number().int().positive().optional(),
+  branch: z.string().optional(),
+  validationPassed: z.boolean().optional(),
+});
+
+export const BuilderJobErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  step: BuilderJobStatusEnum.optional(),
+});
+
+export const BuilderJobSchema = z.object({
+  id: z.string(),
+  prompt: z.string(),
+  status: BuilderJobStatusEnum,
+  options: BuilderOptionsSchema.optional(),
+  result: BuilderJobResultSchema.optional(),
+  error: BuilderJobErrorSchema.optional(),
+  userId: z.string(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export const BuilderJobQuerySchema = z.object({
+  status: BuilderJobStatusEnum.optional(),
+});
+
+export type BuilderJobStatus = z.infer<typeof BuilderJobStatusEnum>;
+export type BuilderOptions = z.infer<typeof BuilderOptionsSchema>;
+export type BuilderPrompt = z.infer<typeof BuilderPromptSchema>;
+export type BuilderGeneratedFile = z.infer<typeof BuilderGeneratedFileSchema>;
+export type BuilderJobResult = z.infer<typeof BuilderJobResultSchema>;
+export type BuilderJobError = z.infer<typeof BuilderJobErrorSchema>;
+export type BuilderJob = z.infer<typeof BuilderJobSchema>;
+export type BuilderJobQuery = z.infer<typeof BuilderJobQuerySchema>;
