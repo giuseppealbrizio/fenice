@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useBuilderStore } from '../stores/builder.store';
 import { useViewStore } from '../stores/view.store';
-import { submitBuilderPrompt, fetchBuilderJob } from '../services/builder-api';
-import type { BuilderJobStatus } from '../types/builder';
+import { submitBuilderPrompt, fetchBuilderJob, approveBuilderJob, rejectBuilderJob } from '../services/builder-api';
+import type { BuilderJobStatus, BuilderPlanFile } from '../types/builder';
 
 const WS_TOKEN = import.meta.env.VITE_WS_TOKEN as string | undefined;
 
@@ -52,6 +52,14 @@ const BUILDER_THEME = {
     progressFill: '#2563eb',
   },
 } as const;
+
+const TYPE_COLORS: Record<string, string> = {
+  schema: '#8b5cf6',
+  model: '#06b6d4',
+  service: '#f59e0b',
+  route: '#10b981',
+  test: '#6366f1',
+};
 
 const STATUS_LABELS: Record<BuilderJobStatus, string> = {
   queued: 'Queued',
@@ -105,13 +113,18 @@ export function BuilderPromptBar(): React.JSX.Element {
   const setResult = useBuilderStore((s) => s.setResult);
   const setError = useBuilderStore((s) => s.setError);
   const dismiss = useBuilderStore((s) => s.dismiss);
+  const plan = useBuilderStore((s) => s.plan);
+  const summary = useBuilderStore((s) => s.summary);
+  const setPlan = useBuilderStore((s) => s.setPlan);
+  const updatePlanFile = useBuilderStore((s) => s.updatePlanFile);
+  const removePlanFile = useBuilderStore((s) => s.removePlanFile);
 
   const visualMode = useViewStore((s) => s.visualMode);
   const theme = BUILDER_THEME[visualMode];
   const logEndRef = useRef<HTMLDivElement>(null);
 
   const isRunning =
-    status !== null && status !== 'completed' && status !== 'failed' && status !== 'rejected';
+    status !== null && status !== 'completed' && status !== 'failed' && status !== 'rejected' && status !== 'plan_ready';
   const canSubmit = prompt.length >= 10 && prompt.length <= 2000 && !submitting && !isRunning;
 
   const handleSubmit = useCallback(async () => {
@@ -133,6 +146,25 @@ export function BuilderPromptBar(): React.JSX.Element {
     },
     [canSubmit, handleSubmit]
   );
+
+  const handleApprove = useCallback(async () => {
+    if (!jobId || !WS_TOKEN || !plan || !summary) return;
+    try {
+      await approveBuilderJob(WS_TOKEN, jobId, { files: plan, summary });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Approve failed');
+    }
+  }, [jobId, plan, summary, setError]);
+
+  const handleReject = useCallback(async () => {
+    if (!jobId || !WS_TOKEN) return;
+    try {
+      await rejectBuilderJob(WS_TOKEN, jobId);
+      dismiss();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Reject failed');
+    }
+  }, [jobId, dismiss, setError]);
 
   // Fetch full job details when status reaches completed or failed
   useEffect(() => {
@@ -158,6 +190,24 @@ export function BuilderPromptBar(): React.JSX.Element {
       cancelled = true;
     };
   }, [jobId, status, setResult, setError]);
+
+  // Fetch plan details when status reaches plan_ready
+  useEffect(() => {
+    if (!jobId || !WS_TOKEN || status !== 'plan_ready') return;
+
+    let cancelled = false;
+    void fetchBuilderJob(WS_TOKEN, jobId)
+      .then((job) => {
+        if (cancelled || !job.plan) return;
+        setPlan(job.plan.files, job.plan.summary);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to fetch plan');
+      });
+
+    return () => { cancelled = true; };
+  }, [jobId, status, setPlan, setError]);
 
   // Auto-scroll log to bottom
   useEffect(() => {
@@ -425,6 +475,88 @@ export function BuilderPromptBar(): React.JSX.Element {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Plan review */}
+      {status === 'plan_ready' && plan && (
+        <div style={{ marginBottom: '12px' }}>
+          {summary && (
+            <div style={{ fontSize: '12px', color: theme.text, marginBottom: '10px', lineHeight: 1.4 }}>
+              {summary}
+            </div>
+          )}
+          <div style={{
+            fontSize: '10px', color: theme.muted, textTransform: 'uppercase' as const,
+            letterSpacing: '0.5px', marginBottom: '6px',
+          }}>
+            Files to Generate ({plan.length})
+          </div>
+          <div style={{ maxHeight: '200px', overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: '6px' }}>
+            {plan.map((file: BuilderPlanFile, i: number) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px',
+                padding: '6px 8px', borderRadius: '6px',
+                backgroundColor: visualMode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+              }}>
+                <span style={{
+                  fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px',
+                  color: '#fff', backgroundColor: TYPE_COLORS[file.type] ?? theme.badgeCreated,
+                  textTransform: 'uppercase' as const, flexShrink: 0,
+                }}>
+                  {file.type}
+                </span>
+                <span style={{
+                  fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontSize: '11px',
+                  color: theme.text, flexShrink: 0,
+                }}>
+                  {file.path}
+                </span>
+                <input
+                  type="text"
+                  value={file.description}
+                  onChange={(e) => updatePlanFile(i, { description: e.target.value })}
+                  style={{
+                    flex: 1, fontSize: '11px', color: theme.muted, background: 'none',
+                    border: 'none', outline: 'none', padding: '0 4px', minWidth: 0,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removePlanFile(i)}
+                  style={{
+                    background: 'none', border: 'none', color: theme.close,
+                    fontSize: '14px', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0,
+                  }}
+                  aria-label={`Remove ${file.path}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <button type="button" onClick={() => void handleApprove()}
+              disabled={!plan || plan.length === 0}
+              style={{
+                flex: 1, padding: '8px 16px', borderRadius: '6px', border: 'none',
+                backgroundColor: plan && plan.length > 0 ? theme.buttonBg : theme.buttonDisabled,
+                color: theme.buttonText, fontSize: '12px', fontWeight: 600,
+                cursor: plan && plan.length > 0 ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Approve & Generate
+            </button>
+            <button type="button" onClick={() => void handleReject()}
+              style={{
+                padding: '8px 16px', borderRadius: '6px',
+                border: `1px solid ${theme.errorText}`, backgroundColor: 'transparent',
+                color: theme.errorText, fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Reject
+            </button>
+          </div>
         </div>
       )}
 
