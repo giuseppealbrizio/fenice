@@ -30,6 +30,17 @@ const PANEL_THEME = {
   },
 } as const;
 
+const REASON_LABELS: Record<string, string> = {
+  auth_required_no_session: 'Auth required — no active session',
+  auth_token_expired: 'Auth token has expired',
+  policy_denied: 'Access denied by policy',
+  dependency_unhealthy_hard: 'Dependency is down',
+  service_unhealthy_soft: 'Service partially degraded',
+  latency_high: 'High latency detected',
+  error_rate_high: 'Error rate above threshold',
+  signal_missing: 'No telemetry signal',
+};
+
 export function SidePanel(): React.JSX.Element | null {
   const selectedId = useSelectionStore((s) => s.selectedId);
   const setSelected = useSelectionStore((s) => s.setSelected);
@@ -225,8 +236,20 @@ export function SidePanel(): React.JSX.Element | null {
             {semantics.reason && (
               <>
                 <span style={{ color: theme.muted }}>Reason</span>
-                <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                  {semantics.reason}
+                <span>
+                  <div style={{ fontSize: '13px' }}>
+                    {REASON_LABELS[semantics.reason] ?? semantics.reason}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace',
+                      fontSize: '10px',
+                      color: theme.muted,
+                      marginTop: '2px',
+                    }}
+                  >
+                    {semantics.reason}
+                  </div>
                 </span>
               </>
             )}
@@ -287,6 +310,17 @@ export function SidePanel(): React.JSX.Element | null {
                   gap: '8px',
                 }}
               >
+                {/* Link-state dot */}
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor:
+                      LINK_STATE_COLORS[endpointSemantics[ep.id]?.linkState ?? 'unknown'].hex,
+                    flexShrink: 0,
+                  }}
+                />
                 <span
                   style={{
                     backgroundColor: METHOD_COLORS[ep.method],

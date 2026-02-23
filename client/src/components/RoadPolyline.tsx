@@ -7,6 +7,7 @@ interface RoadPolylineProps {
   surfaceOpacity: number;
   markingColor: string;
   markingOpacity: number;
+  markingEmissiveIntensity?: number | undefined;
 }
 
 const ROAD_THICKNESS = 0.02;
@@ -19,6 +20,7 @@ export function RoadPolyline({
   surfaceOpacity,
   markingColor,
   markingOpacity,
+  markingEmissiveIntensity = 0.25,
 }: RoadPolylineProps): React.JSX.Element {
   if (points.length < 2) return <></>;
 
@@ -60,7 +62,7 @@ export function RoadPolyline({
               <meshStandardMaterial
                 color={markingColor}
                 emissive={markingColor}
-                emissiveIntensity={0.25}
+                emissiveIntensity={markingEmissiveIntensity}
                 transparent
                 opacity={markingOpacity}
                 roughness={0.6}
