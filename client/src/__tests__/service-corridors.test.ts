@@ -26,8 +26,8 @@ describe('computeCorridorPoints', () => {
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1]!;
       const curr = points[i]!;
-      const sameX = prev[0] === curr[0];
-      const sameZ = prev[2] === curr[2];
+      const sameX = prev.x === curr.x;
+      const sameZ = prev.z === curr.z;
       expect(sameX || sameZ).toBe(true);
     }
   });
