@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JWT + admin RBAC + dedicated rate limit (5 req/hour) on builder endpoints
 - New dependencies: `@anthropic-ai/sdk`, `simple-git`, `@octokit/rest`
 - 75+ new unit and integration tests for builder subsystem (536 total tests, 61 files)
+- Builder Prompt Bar in 3D world client: collapsible panel for submitting prompts, real-time status via WebSocket
+- Client-side builder types, Zustand store, and REST API client (`builder-api.ts`)
+- Preview/Live (dry-run) toggle in prompt bar with explanation text
+- Real-time activity mini-log showing Claude tool calls during code generation
+- `builder.progress` delta event forwarding from world store to builder store
+- Seed admin user (`admin@formray.io`) created automatically on every server start
+- `detail` field on `builder.progress` delta events for granular tool activity reporting
+- 17 new builder store unit tests (154 total client tests)
 
 - World model Zod schemas (WorldService, WorldEndpoint, WorldEdge, WorldModel) with schema version 1
 - ProjectionService for OpenAPI 3.x to WorldModel transformation (tag grouping, pairwise edges, auth detection)

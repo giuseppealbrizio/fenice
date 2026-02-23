@@ -61,6 +61,10 @@ export const EnvSchema = z.object({
   DELTA_METRICS_INTERVAL_MS: z.coerce.number().default(5_000),
   DELTA_DIFF_INTERVAL_MS: z.coerce.number().default(30_000),
 
+  // Seed Admin
+  SEED_ADMIN_EMAIL: z.string().default('admin@formray.io'),
+  SEED_ADMIN_PASSWORD: z.string().default('change-me-in-production'),
+
   // Builder
   BUILDER_ENABLED: z.coerce.boolean().default(false),
   ANTHROPIC_API_KEY: z.string().optional(),
