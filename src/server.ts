@@ -6,7 +6,9 @@ import { loadEnv } from './config/env.js';
 import { createLogger } from './utils/logger.js';
 import { MockDeltaProducer } from './services/mock-delta-producer.js';
 import { getWorldWsManager, getProjectionService } from './routes/world-ws.routes.js';
+import { initBuilderService } from './routes/builder.routes.js';
 import type { WorldModel } from './schemas/world.schema.js';
+import { seedAdminUser } from './utils/seed.js';
 
 dotenv.config();
 
@@ -17,6 +19,8 @@ async function start(): Promise<void> {
   try {
     await mongoose.connect(env.MONGODB_URI);
     logger.info('Connected to MongoDB');
+
+    await seedAdminUser();
 
     const server = serve(
       {
@@ -32,8 +36,12 @@ async function start(): Promise<void> {
     injectWebSocket(server);
     logger.info('WebSocket support enabled');
 
-    // Delta producer — singleton, started once at boot
+    // Wire world WebSocket manager into builder service for real-time progress
     const worldMgr = getWorldWsManager();
+    initBuilderService(worldMgr);
+    logger.info('Builder service initialized with world notifier');
+
+    // Delta producer — singleton, started once at boot
     const projectionSvc = getProjectionService();
     const deltaProducer = new MockDeltaProducer(worldMgr, projectionSvc, {
       metricsIntervalMs: env.DELTA_METRICS_INTERVAL_MS,

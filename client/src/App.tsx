@@ -1,6 +1,7 @@
 import { Scene } from './components/Scene';
 import { HUD } from './components/HUD';
 import { SidePanel } from './components/SidePanel';
+import { BuilderPromptBar } from './components/BuilderPromptBar';
 import { useWorldSocket } from './hooks/useWorldSocket';
 
 const WS_TOKEN = import.meta.env.VITE_WS_TOKEN as string | undefined;
@@ -13,6 +14,7 @@ export function App(): React.JSX.Element {
       <Scene />
       <HUD />
       <SidePanel />
+      <BuilderPromptBar />
     </div>
   );
 }

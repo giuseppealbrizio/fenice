@@ -223,6 +223,79 @@ mcpRouter.get('/mcp', async (c) => {
           required: ['token'],
         },
       },
+      {
+        name: 'builder_generate',
+        description:
+          'Generate production-ready API endpoints from a natural language prompt. Creates schemas, models, services, routes, and tests, then opens a PR on GitHub. Requires admin role.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            prompt: {
+              type: 'string',
+              minLength: 10,
+              maxLength: 2000,
+              description: 'Natural language description of the API feature to build',
+            },
+            options: {
+              type: 'object',
+              properties: {
+                dryRun: {
+                  type: 'boolean',
+                  default: false,
+                  description: 'If true, generate code but do not write files or create PR',
+                },
+                includeModel: {
+                  type: 'boolean',
+                  default: true,
+                  description: 'Generate Mongoose model',
+                },
+                includeTests: {
+                  type: 'boolean',
+                  default: true,
+                  description: 'Generate test files',
+                },
+              },
+            },
+          },
+          required: ['prompt'],
+        },
+      },
+      {
+        name: 'builder_get_job',
+        description: 'Get the status and result of a builder job by ID',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            jobId: { type: 'string', description: 'The builder job ID' },
+          },
+          required: ['jobId'],
+        },
+      },
+      {
+        name: 'builder_list_jobs',
+        description: 'List builder jobs with optional status filter and cursor pagination',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            status: {
+              type: 'string',
+              enum: [
+                'queued',
+                'reading_context',
+                'generating',
+                'writing_files',
+                'validating',
+                'creating_pr',
+                'completed',
+                'failed',
+              ],
+              description: 'Filter by job status',
+            },
+            cursor: { type: 'string', description: 'Pagination cursor' },
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 20 },
+          },
+        },
+      },
     ],
     resources: [
       {
@@ -239,7 +312,7 @@ mcpRouter.get('/mcp', async (c) => {
       },
     ],
     instructions:
-      'FENICE is an AI-native REST API. Use the tools above to interact with authentication, user management, file uploads, world projection, and real-time WebSocket messaging. All tool calls map to REST endpoints. Authentication required for most operations — obtain tokens via auth_login first. WebSocket connections require a valid JWT token.',
+      'FENICE is an AI-native REST API. Use the tools above to interact with authentication, user management, file uploads, world projection, real-time WebSocket messaging, and the AI builder. The builder_generate tool creates production-ready API endpoints from natural language prompts and opens GitHub PRs (admin role required). All tool calls map to REST endpoints. Authentication required for most operations — obtain tokens via auth_login first. WebSocket connections require a valid JWT token.',
   });
 });
 

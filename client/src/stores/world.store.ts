@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { WorldService, WorldEndpoint, WorldEdge, WorldModel } from '../types/world';
 import type { WorldDeltaMessage } from '../types/world-ws';
 import type { EndpointMetrics, EndpointHealth } from '../types/world-delta';
+import { useBuilderStore } from './builder.store';
 import type {
   SessionState,
   SemanticState,
@@ -182,6 +183,10 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         case 'endpoint.health.updated': {
           const existing = overlays[event.entityId];
           overlays[event.entityId] = { ...existing, health: event.payload };
+          break;
+        }
+        case 'builder.progress': {
+          useBuilderStore.getState().applyProgress(event.payload);
           break;
         }
       }

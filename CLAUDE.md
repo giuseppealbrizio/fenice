@@ -113,10 +113,22 @@ src/
   services/
     auth.service.ts     # Signup, login, refresh (JWT generation)
     user.service.ts     # CRUD operations
+    builder.service.ts  # AI Builder orchestrator (prompt-to-PR pipeline)
+    builder/
+      context-reader.ts   # Reads codebase as LLM context bundle
+      code-generator.ts   # Claude API tool-use loop (generate + repair)
+      scope-policy.ts     # Path whitelist/blacklist + content scanning
+      prompt-templates.ts # System prompt + tool definitions
+      file-writer.ts      # Writes generated files (scope-validated)
+      git-ops.ts          # Branch/commit/push via simple-git
+      github-pr.ts        # PR creation via Octokit
+      validator.ts        # Runs typecheck/lint/test via child_process
+      world-notifier.ts   # Emits builder progress + synthetic deltas via WebSocket
   routes/
     health.routes.ts    # GET /health, /health/detailed (liveness + readiness)
     auth.routes.ts      # POST /auth/signup, /login, /refresh
     user.routes.ts      # GET /users/me, /users/:id, PATCH /users/:id, DELETE /users/:id
+    builder.routes.ts   # POST /builder/generate, GET /builder/jobs/:id, GET /builder/jobs
     mcp.routes.ts       # GET /mcp (AI agent discovery)
   middleware/
     auth.ts             # JWT Bearer token verification
@@ -146,13 +158,33 @@ Vendor-independent abstractions for external services:
 - **Storage:** `StorageAdapter` interface with `LocalStorageAdapter` (dev) and `GCSAdapter` (prod)
 - **Messaging:** `MessagingAdapter` interface with `ConsoleMessagingAdapter` (dev) and `FCMAdapter` (prod)
 
+### AI Builder (M3)
+The builder pipeline generates production-ready API endpoints from natural language prompts:
+
+```
+POST /api/v1/builder/generate  (JWT + admin + rate limit 5/hour)
+  1. Read context (CLAUDE.md, schemas, models, services, routes)
+  2. Generate code via Claude API (tool-use loop: write_file, modify_file, read_file)
+  3. Scope policy validation (path whitelist/blacklist, content scanning)
+  4. Write files + create git branch (conventional commit + Co-Authored-By)
+  5. Validate (typecheck + lint + test)
+  6. Self-repair if validation fails (1 retry via Claude)
+  7. Push branch + create PR via Octokit
+  8. Emit synthetic deltas to 3D world via WebSocket
+```
+
+- **Safety:** Scope policy (ALLOWED_WRITE_PREFIXES, FORBIDDEN_PATHS, dangerous pattern scanning), PR-only (never merges)
+- **Kill switch:** `BUILDER_ENABLED=false` returns 503
+- **World integration:** `builder.progress` delta events + synthetic `service.upserted`/`endpoint.upserted` deltas
+- **Deps:** `@anthropic-ai/sdk`, `simple-git`, `@octokit/rest`
+
 ## Testing
 
 - **Framework:** Vitest v4 with `globals: true`
 - **Property testing:** fast-check for schema validation properties
 - **Coverage:** v8 provider, thresholds at 60/40/50/60 (stmts/branches/funcs/lines). DB-dependent files (services, models, production adapters) excluded — need MongoDB integration tests.
 - **Test structure:** `tests/unit/`, `tests/integration/`, `tests/properties/`
-- **Current status:** 35 tests across 11 test files, all passing
+- **Current status:** 536+ tests across 61 test files, all passing
 - **TDD preferred:** Write tests alongside or before implementation
 
 ## Common Gotchas
@@ -204,3 +236,12 @@ Production adapters (optional):
 - `RESEND_API_KEY` — Resend email service API key
 - `GCS_BUCKET_NAME`, `GCS_PROJECT_ID`, `GOOGLE_APPLICATION_CREDENTIALS` — Google Cloud Storage
 - `FCM_PROJECT_ID` — Firebase Cloud Messaging
+
+AI Builder (optional):
+- `BUILDER_ENABLED` — Enable builder endpoints (default: `false`)
+- `ANTHROPIC_API_KEY` — Claude API key for code generation
+- `GITHUB_TOKEN` — GitHub personal access token for PR creation
+- `GITHUB_OWNER` — GitHub repository owner
+- `GITHUB_REPO` — GitHub repository name
+- `BUILDER_RATE_LIMIT_MAX` — Max builder requests per window (default: `5`)
+- `BUILDER_RATE_LIMIT_WINDOW_MS` — Rate limit window in ms (default: `3600000` / 1 hour)

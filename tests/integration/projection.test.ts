@@ -17,7 +17,7 @@ describe('ProjectionService integration (live OpenAPI spec)', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should discover 4 services from the real spec', async () => {
+  it('should discover 5 services from the real spec', async () => {
     const res = await app.request('/openapi');
     const spec: unknown = await res.json();
 
@@ -25,7 +25,7 @@ describe('ProjectionService integration (live OpenAPI spec)', () => {
     const model = projection.buildWorldModel(spec);
 
     const tags = model.services.map((s) => s.tag).sort();
-    expect(tags).toEqual(['Auth', 'Health', 'Upload', 'Users']);
+    expect(tags).toEqual(['Auth', 'Builder', 'Health', 'Upload', 'Users']);
   });
 
   it('should discover 15+ endpoints from the real spec', async () => {

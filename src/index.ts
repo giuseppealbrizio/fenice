@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.routes.js';
 import { userRouter } from './routes/user.routes.js';
 import { mcpRouter } from './routes/mcp.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
+import { builderRouter } from './routes/builder.routes.js';
 import { createWsRouter } from './routes/ws.routes.js';
 import { createWorldWsRouter } from './routes/world-ws.routes.js';
 import { requestId } from './middleware/requestId.js';
@@ -74,6 +75,14 @@ app.use('/api/v1/users/*', authMiddleware);
 app.use('/api/v1/auth/logout', authMiddleware);
 app.use('/api/v1/upload/*', authMiddleware);
 app.use('/api/v1/upload/*', rateLimiter({ windowMs: 60_000, max: 5 }));
+app.use('/api/v1/builder/*', authMiddleware);
+app.use(
+  '/api/v1/builder/*',
+  rateLimiter({
+    windowMs: Number(process.env['BUILDER_RATE_LIMIT_WINDOW_MS']) || 3_600_000,
+    max: Number(process.env['BUILDER_RATE_LIMIT_MAX']) || 5,
+  })
+);
 
 // Mount API routes
 app.route('/api/v1', healthRouter);
@@ -81,6 +90,7 @@ app.route('/api/v1', authRouter);
 app.route('/api/v1', userRouter);
 app.route('/api/v1', mcpRouter);
 app.route('/api/v1', uploadRouter);
+app.route('/api/v1', builderRouter);
 app.route('/api/v1', createWsRouter(nodeWs.upgradeWebSocket));
 app.route('/api/v1', createWorldWsRouter(nodeWs.upgradeWebSocket, app));
 
