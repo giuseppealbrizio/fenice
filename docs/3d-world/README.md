@@ -1,12 +1,13 @@
 # FENICE 3D World Docs
 
-Stato: M1 completato (2026-02-22), M2 in avvio con sequenza M2A -> M2B -> M2C.
+Stato: M1 completato (2026-02-22), M2A/M2B completate, M2C in corso (visual skin + UX clarity).
 
 ## Milestone snapshot
 1. `M1`: DONE - static city da OpenAPI verificata.
-2. `M2A`: IN_PROGRESS - realtime overlay tecnico.
-3. `M2B`: PLANNED - semantic layer (auth/public/link states).
-4. `M2C`: PLANNED - visual skin Tron.
+2. `M2A`: DONE - realtime overlay tecnico (delta + resync).
+3. `M2B`: DONE - semantic layer (auth/public/link states).
+4. `M2C`: IN_PROGRESS - visual skin Tron.
+5. `M2D`: IN_PROGRESS - visual clarity/perf hardening (track operativo interno M2).
 5. `M3`: PLANNED - AI Builder PR-only.
 6. `M4`: PLANNED - multi-user collaboration.
 
@@ -43,6 +44,9 @@ Stato: M1 completato (2026-02-22), M2 in avvio con sequenza M2A -> M2B -> M2C.
 1. `FENICE_3D_World_M2D_PR_Review_Checklist.md`
 2. `FENICE_3D_World_M2D_Visual_QA_Rubric.md`
 3. `../plans/2026-02-22-m2d-client-kpi-harness-plan.md`
+
+## Current execution roadmap
+1. `FENICE_3D_World_Roadmap_v0.2.md`
 
 ## Maintenance notes
 1. Ogni nuova milestone va aggiunta qui.

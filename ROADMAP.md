@@ -51,6 +51,8 @@ Infrastructure and performance improvements for production scale:
 
 The AI-native 3D city experience (React Three Fiber, AI builder, city metaphor). See [design doc](docs/plans/2026-02-21-fenice-design.md) for details.
 
+Execution tracking for active phases is maintained in [docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md](docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md).
+
 ## Contributing
 
 Want to help build the next version? See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
