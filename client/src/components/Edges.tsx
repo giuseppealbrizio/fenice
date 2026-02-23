@@ -81,9 +81,9 @@ export function Edges({
 
         const isDashed = style.edgeStyle === 'dashed';
         const dashProps = isDashed ? { dashSize: 0.5, gapSize: 0.3 } : {};
-        const lineWidth = isDashed ? 1 : 1.5;
-        const routeWidth = isAuthGated ? lineWidth * 0.8 : lineWidth;
-        const baseOpacity = isAuthGated ? Math.max(0.2, style.opacity * 0.7) : style.opacity;
+        const baseWidth = isDashed ? 1 : 1.5;
+        const routeWidth = isAuthGated ? 3.0 : baseWidth;
+        const baseOpacity = style.opacity;
         const routeOpacity = isIntraService ? Math.min(baseOpacity, 0.18) : baseOpacity;
 
         return (
