@@ -5,7 +5,6 @@ import type { BuildingLayout, Position3D } from '../services/layout.service';
 import type { SemanticState } from '../types/semantic';
 import { LINK_STATE_COLORS } from '../utils/colors';
 import type { LinkState } from '../types/semantic';
-import { useSelectionStore } from '../stores/selection.store';
 
 const ROUTE_Y = 0.05;
 const LANE_STEP = 0.28;
@@ -143,7 +142,6 @@ export function Edges({
   endpointMap,
   gatePosition,
 }: EdgesProps): React.JSX.Element {
-  const selectedId = useSelectionStore((s) => s.selectedId);
   const posMap = useMemo(
     () => new Map(buildingLayouts.map((b) => [b.endpointId, b.position])),
     [buildingLayouts]
@@ -185,11 +183,8 @@ export function Edges({
 
       const isAuthBoundary = sourceEp.hasAuth !== targetEp.hasAuth;
       const isIntraService = sourceEp.serviceId === targetEp.serviceId;
-      const isRelatedToSelection =
-        selectedId !== null && (edge.sourceId === selectedId || edge.targetId === selectedId);
-
-      // Reduce visual clutter: hide intra-service lines unless selected, but always keep auth-boundary routes.
-      if (isIntraService && !isAuthBoundary && !isRelatedToSelection) continue;
+      // World view focuses on inter-service topology; intra-service mesh edges stay hidden.
+      if (isIntraService && !isAuthBoundary) continue;
 
       const a = sourceEp.serviceId;
       const b = targetEp.serviceId;
@@ -232,7 +227,7 @@ export function Edges({
     return visible
       .map(({ groupKey: _groupKey, ...route }) => route)
       .sort((a, b) => Number(a.isAuthBoundary) - Number(b.isAuthBoundary));
-  }, [edges, endpointMap, posMap, selectedId]);
+  }, [edges, endpointMap, posMap]);
 
   return (
     <group>
