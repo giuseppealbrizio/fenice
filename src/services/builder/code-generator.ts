@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { BuilderGeneratedFile, BuilderPlan } from '../../schemas/builder.schema.js';
 import { BuilderPlanSchema } from '../../schemas/builder.schema.js';
 import { BUILDER_SYSTEM_PROMPT, BUILDER_PLAN_PROMPT, BUILDER_TOOLS, buildPlanConstraint } from './prompt-templates.js';
-import { formatContextForPrompt, type ContextBundle } from './context-reader.js';
+import { formatContextForPrompt, formatContextForGeneration, type ContextBundle } from './context-reader.js';
 import {
   validateFilePath,
   scanContentForDangerousPatterns,
@@ -100,7 +100,7 @@ export async function generateCode(
 ): Promise<GenerationResult> {
   const client = new Anthropic({ apiKey });
 
-  const contextText = formatContextForPrompt(context);
+  const contextText = plan ? formatContextForGeneration(context) : formatContextForPrompt(context);
   const planConstraint = plan ? buildPlanConstraint(plan) : '';
   const userMessage = `${contextText}\n\n${planConstraint}## User Request\n\n${prompt}\n\nGenerate all necessary files using the tools provided. Create complete, production-ready code following the project conventions shown above.`;
 
