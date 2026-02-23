@@ -192,6 +192,31 @@ export function HUD(): React.JSX.Element {
           ))}
         </div>
 
+        {/* Building visual guide */}
+        <div
+          style={{
+            marginTop: '14px',
+            borderTop: `1px solid ${theme.divider}`,
+            paddingTop: '10px',
+            fontSize: '10px',
+            color: theme.muted,
+            lineHeight: 1.5,
+          }}
+        >
+          <div
+            style={{
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '4px',
+            }}
+          >
+            Building Guide
+          </div>
+          <div>Body color = HTTP method</div>
+          <div>Base ring = link state</div>
+          <div>Thick edge = auth-gated route</div>
+        </div>
+
         {/* Routing hint legend */}
         <div
           style={{
@@ -207,10 +232,8 @@ export function HUD(): React.JSX.Element {
           <div style={{ textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
             Routing
           </div>
-          <div>Lines passing through the center gate are auth-gated routes.</div>
-          <div style={{ marginTop: '4px' }}>
-            Link colors are driven by live telemetry simulation.
-          </div>
+          <div>Edge color shows link state between endpoints.</div>
+          <div style={{ marginTop: '4px' }}>Thick lines route through the auth gate.</div>
         </div>
       </div>
     </div>
