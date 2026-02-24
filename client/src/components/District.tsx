@@ -87,6 +87,8 @@ export function District({ layout }: DistrictProps): React.JSX.Element {
           transparent
           opacity={ZONE_LAYOUT_CONFIG[layout.zone].groundOpacity}
           roughness={0.9}
+          emissive={visualMode === 'dark' ? floorColor : '#000000'}
+          emissiveIntensity={visualMode === 'dark' ? 0.05 : 0}
         />
       </mesh>
 
