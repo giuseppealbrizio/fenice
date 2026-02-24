@@ -1,9 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { BuilderGeneratedFile } from '../../schemas/builder.schema.js';
-import { BUILDER_SYSTEM_PROMPT, BUILDER_TOOLS } from './prompt-templates.js';
-import { formatContextForPrompt, type ContextBundle } from './context-reader.js';
+import type { BuilderGeneratedFile, BuilderPlan } from '../../schemas/builder.schema.js';
+import { BuilderPlanSchema } from '../../schemas/builder.schema.js';
+import { BUILDER_SYSTEM_PROMPT, BUILDER_PLAN_PROMPT, BUILDER_TOOLS, buildPlanConstraint } from './prompt-templates.js';
+import { formatContextForPrompt, formatContextForGeneration, type ContextBundle } from './context-reader.js';
 import {
   validateFilePath,
   scanContentForDangerousPatterns,
@@ -24,17 +25,84 @@ export interface GenerationResult {
   tokenUsage: { inputTokens: number; outputTokens: number };
 }
 
+export interface PlanResult {
+  plan: BuilderPlan;
+  tokenUsage: { inputTokens: number; outputTokens: number };
+}
+
+export async function generatePlan(
+  prompt: string,
+  context: ContextBundle,
+  apiKey: string
+): Promise<PlanResult> {
+  const client = new Anthropic({ apiKey });
+
+  const contextText = formatContextForPrompt(context);
+  const userMessage = `${contextText}\n\n## User Request\n\n${prompt}`;
+
+  let response: Anthropic.Message;
+  try {
+    response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: BUILDER_PLAN_PROMPT,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown Anthropic API error';
+    logger.error({ error: message }, 'Anthropic API call failed during planning');
+    throw new AppError(502, 'LLM_API_ERROR', `Claude API error during planning: ${message}`);
+  }
+
+  const textBlock = response.content.find((b) => b.type === 'text');
+  let raw = textBlock?.type === 'text' ? textBlock.text : '';
+
+  // Strip markdown code fences if present
+  const fenceMatch = /```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/.exec(raw);
+  if (fenceMatch?.[1]) {
+    raw = fenceMatch[1];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    logger.error({ raw: raw.slice(0, 200) }, 'Plan response is not valid JSON');
+    throw new AppError(502, 'PLAN_PARSE_ERROR', 'Claude returned invalid JSON for the plan');
+  }
+
+  const validation = BuilderPlanSchema.safeParse(parsed);
+  if (!validation.success) {
+    logger.error({ issues: validation.error.issues }, 'Plan response failed schema validation');
+    throw new AppError(
+      502,
+      'PLAN_PARSE_ERROR',
+      'Claude returned a plan that does not match the expected schema'
+    );
+  }
+
+  return {
+    plan: validation.data,
+    tokenUsage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
+}
+
 export async function generateCode(
   prompt: string,
   context: ContextBundle,
   projectRoot: string,
   apiKey: string,
-  onToolActivity?: ToolActivityCallback
+  onToolActivity?: ToolActivityCallback,
+  plan?: BuilderPlan
 ): Promise<GenerationResult> {
   const client = new Anthropic({ apiKey });
 
-  const contextText = formatContextForPrompt(context);
-  const userMessage = `${contextText}\n\n## User Request\n\n${prompt}\n\nGenerate all necessary files using the tools provided. Create complete, production-ready code following the project conventions shown above.`;
+  const contextText = plan ? formatContextForGeneration(context) : formatContextForPrompt(context);
+  const planConstraint = plan ? buildPlanConstraint(plan) : '';
+  const userMessage = `${contextText}\n\n${planConstraint}## User Request\n\n${prompt}\n\nGenerate all necessary files using the tools provided. Create complete, production-ready code following the project conventions shown above.`;
 
   const files: BuilderGeneratedFile[] = [];
   const violations: ScopePolicyViolation[] = [];

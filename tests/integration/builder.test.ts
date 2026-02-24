@@ -211,4 +211,60 @@ describe('Builder routes', () => {
       expect(mockFind).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
     });
   });
+
+  describe('POST /api/v1/builder/jobs/:id/approve', () => {
+    it('returns 503 when builder is disabled', async () => {
+      process.env['BUILDER_ENABLED'] = 'false';
+      const app = createTestApp();
+      const res = await app.request('/api/v1/builder/jobs/abc123/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test' },
+        body: JSON.stringify({
+          plan: {
+            files: [{ path: 'src/schemas/x.schema.ts', type: 'schema', action: 'create', description: 'X' }],
+            summary: 'Test',
+          },
+        }),
+      });
+      expect(res.status).toBe(503);
+    });
+
+    it('returns 403 when role is user', async () => {
+      process.env['BUILDER_ENABLED'] = 'true';
+      const app = createTestApp('user');
+      const res = await app.request('/api/v1/builder/jobs/abc123/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer test' },
+        body: JSON.stringify({
+          plan: {
+            files: [{ path: 'src/schemas/x.schema.ts', type: 'schema', action: 'create', description: 'X' }],
+            summary: 'Test',
+          },
+        }),
+      });
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('POST /api/v1/builder/jobs/:id/reject', () => {
+    it('returns 503 when builder is disabled', async () => {
+      process.env['BUILDER_ENABLED'] = 'false';
+      const app = createTestApp();
+      const res = await app.request('/api/v1/builder/jobs/abc123/reject', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test' },
+      });
+      expect(res.status).toBe(503);
+    });
+
+    it('returns 403 when role is user', async () => {
+      process.env['BUILDER_ENABLED'] = 'true';
+      const app = createTestApp('user');
+      const res = await app.request('/api/v1/builder/jobs/abc123/reject', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer test' },
+      });
+      expect(res.status).toBe(403);
+    });
+  });
 });

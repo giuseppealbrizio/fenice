@@ -19,6 +19,8 @@ describe('useBuilderStore', () => {
     expect(state.logs).toEqual([]);
     expect(state.error).toBeNull();
     expect(state.submitting).toBe(false);
+    expect(state.plan).toBeNull();
+    expect(state.summary).toBeNull();
   });
 
   it('defaults to dry run and toggles', () => {
@@ -187,6 +189,77 @@ describe('useBuilderStore', () => {
     expect(state.files).toEqual([]);
     expect(state.error).toBeNull();
     expect(state.prompt).toBe('Create an endpoint');
+  });
+
+  describe('plan actions', () => {
+    it('setPlan stores plan and summary', () => {
+      const { startJob, setPlan } = useBuilderStore.getState();
+      startJob('job-1');
+      const plan = [
+        {
+          path: 'src/schemas/product.schema.ts',
+          type: 'schema' as const,
+          action: 'create' as const,
+          description: 'Schema',
+        },
+      ];
+      setPlan(plan, 'Generate product API');
+      const state = useBuilderStore.getState();
+      expect(state.plan).toEqual(plan);
+      expect(state.summary).toBe('Generate product API');
+    });
+
+    it('updatePlanFile modifies a file entry', () => {
+      const { startJob, setPlan, updatePlanFile } = useBuilderStore.getState();
+      startJob('job-1');
+      const plan = [
+        {
+          path: 'src/schemas/product.schema.ts',
+          type: 'schema' as const,
+          action: 'create' as const,
+          description: 'Old',
+        },
+      ];
+      setPlan(plan, 'Summary');
+      updatePlanFile(0, { description: 'New description' });
+      expect(useBuilderStore.getState().plan![0]!.description).toBe('New description');
+    });
+
+    it('removePlanFile removes a file entry', () => {
+      const { startJob, setPlan, removePlanFile } = useBuilderStore.getState();
+      startJob('job-1');
+      const plan = [
+        { path: 'a.ts', type: 'schema' as const, action: 'create' as const, description: 'A' },
+        { path: 'b.ts', type: 'model' as const, action: 'create' as const, description: 'B' },
+      ];
+      setPlan(plan, 'Summary');
+      removePlanFile(0);
+      expect(useBuilderStore.getState().plan).toHaveLength(1);
+      expect(useBuilderStore.getState().plan![0]!.path).toBe('b.ts');
+    });
+
+    it('dismiss clears plan and summary', () => {
+      const { startJob, setPlan, dismiss } = useBuilderStore.getState();
+      startJob('job-1');
+      setPlan(
+        [{ path: 'a.ts', type: 'schema' as const, action: 'create' as const, description: 'A' }],
+        'Summary',
+      );
+      dismiss();
+      const state = useBuilderStore.getState();
+      expect(state.plan).toBeNull();
+      expect(state.summary).toBeNull();
+    });
+
+    it('applyProgress with plan_ready triggers status update but plan stays null', () => {
+      const { startJob, applyProgress } = useBuilderStore.getState();
+      startJob('job-1');
+      applyProgress({ jobId: 'job-1', status: 'plan_ready', message: 'Plan ready' });
+      const state = useBuilderStore.getState();
+      expect(state.status).toBe('plan_ready');
+      // Plan itself comes from REST fetch, not from delta payload
+      expect(state.plan).toBeNull();
+    });
   });
 
   it('reset returns to initial state', () => {

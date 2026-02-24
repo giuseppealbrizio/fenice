@@ -5,6 +5,7 @@ import {
   BuilderJobSchema,
   BuilderJobStatusEnum,
   BuilderJobQuerySchema,
+  BuilderApproveSchema,
 } from '../schemas/builder.schema.js';
 import type { BuilderJob } from '../schemas/builder.schema.js';
 import type { BuilderJobDocument } from '../models/builder-job.model.js';
@@ -41,6 +42,7 @@ function serializeJob(job: BuilderJobDocument): BuilderJob {
     prompt: json['prompt'] as string,
     status: json['status'] as BuilderJob['status'],
     options: json['options'] as BuilderJob['options'],
+    plan: json['plan'] as BuilderJob['plan'],
     result: json['result'] as BuilderJob['result'],
     error: json['error'] as BuilderJob['error'],
     userId: json['userId'] as string,
@@ -203,13 +205,93 @@ const listJobsRoute = createRoute({
   },
 });
 
+const approveRoute = createRoute({
+  method: 'post',
+  path: '/builder/jobs/{id}/approve',
+  tags: ['Builder'],
+  summary: 'Approve a builder plan and start code generation',
+  security: [{ Bearer: [] }],
+  request: {
+    params: z.object({ id: z.string().min(1) }),
+    body: {
+      content: { 'application/json': { schema: BuilderApproveSchema } },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: 'Plan approved, generation started',
+      content: { 'application/json': { schema: z.object({ status: z.literal('generating') }) } },
+    },
+    400: {
+      description: 'Invalid state or body',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Not authenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Job not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Builder disabled',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
+const rejectRoute = createRoute({
+  method: 'post',
+  path: '/builder/jobs/{id}/reject',
+  tags: ['Builder'],
+  summary: 'Reject a builder plan',
+  security: [{ Bearer: [] }],
+  request: {
+    params: z.object({ id: z.string().min(1) }),
+  },
+  responses: {
+    200: {
+      description: 'Plan rejected',
+      content: { 'application/json': { schema: z.object({ status: z.literal('rejected') }) } },
+    },
+    400: {
+      description: 'Invalid state',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Not authenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Job not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Builder disabled',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
 // --- Router ---
 
 export const builderRouter = new OpenAPIHono<AuthEnv>();
 
-// RBAC: admin-only for generate and list
+// RBAC: admin-only for generate, list, approve, reject
 builderRouter.post('/builder/generate', requireRole('admin'));
 builderRouter.get('/builder/jobs', requireRole('admin'));
+builderRouter.post('/builder/jobs/:id/approve', requireRole('admin'));
+builderRouter.post('/builder/jobs/:id/reject', requireRole('admin'));
 
 builderRouter.openapi(generateRoute, async (c) => {
   checkBuilderEnabled();
@@ -246,4 +328,19 @@ builderRouter.openapi(listJobsRoute, async (c) => {
     },
     200
   );
+});
+
+builderRouter.openapi(approveRoute, async (c) => {
+  checkBuilderEnabled();
+  const { id } = c.req.valid('param');
+  const { plan } = c.req.valid('json');
+  await getBuilderService().approve(id, plan);
+  return c.json({ status: 'generating' as const }, 200);
+});
+
+builderRouter.openapi(rejectRoute, async (c) => {
+  checkBuilderEnabled();
+  const { id } = c.req.valid('param');
+  await getBuilderService().reject(id);
+  return c.json({ status: 'rejected' as const }, 200);
 });

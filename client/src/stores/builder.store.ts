@@ -3,6 +3,7 @@ import type {
   BuilderJobStatus,
   BuilderGeneratedFile,
   BuilderProgressPayload,
+  BuilderPlanFile,
 } from '../types/builder';
 
 const MAX_LOGS = 50;
@@ -18,6 +19,8 @@ interface BuilderState {
   logs: string[];
   error: string | null;
   submitting: boolean;
+  plan: BuilderPlanFile[] | null;
+  summary: string | null;
 
   setExpanded: (expanded: boolean) => void;
   toggleExpanded: () => void;
@@ -30,6 +33,9 @@ interface BuilderState {
   setError: (error: string) => void;
   dismiss: () => void;
   reset: () => void;
+  setPlan: (plan: BuilderPlanFile[], summary: string) => void;
+  updatePlanFile: (index: number, changes: Partial<BuilderPlanFile>) => void;
+  removePlanFile: (index: number) => void;
 }
 
 const initialState = {
@@ -43,6 +49,8 @@ const initialState = {
   logs: [] as string[],
   error: null as string | null,
   submitting: false,
+  plan: null as BuilderPlanFile[] | null,
+  summary: null as string | null,
 };
 
 export const useBuilderStore = create<BuilderState>((set, get) => ({
@@ -63,6 +71,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       logs: [],
       error: null,
       submitting: false,
+      plan: null,
+      summary: null,
     }),
 
   applyProgress: (payload) => {
@@ -89,7 +99,34 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setError: (error) => set({ error, status: 'failed', submitting: false }),
 
   dismiss: () =>
-    set({ jobId: null, status: null, statusMessage: null, files: [], logs: [], error: null }),
+    set({
+      jobId: null,
+      status: null,
+      statusMessage: null,
+      files: [],
+      logs: [],
+      error: null,
+      plan: null,
+      summary: null,
+    }),
 
   reset: () => set(initialState),
+
+  setPlan: (plan, summary) => set({ plan, summary }),
+
+  updatePlanFile: (index, changes) => {
+    const plan = get().plan;
+    if (!plan) return;
+    const updated = [...plan];
+    const existing = updated[index];
+    if (!existing) return;
+    updated[index] = { ...existing, ...changes };
+    set({ plan: updated });
+  },
+
+  removePlanFile: (index) => {
+    const plan = get().plan;
+    if (!plan) return;
+    set({ plan: plan.filter((_, i) => i !== index) });
+  },
 }));

@@ -122,3 +122,50 @@ export function formatContextForPrompt(bundle: ContextBundle): string {
 
   return parts.join('\n');
 }
+
+const CONVENTIONS_SECTIONS = [
+  '## Tech Stack',
+  '## Key Commands',
+  '## Code Style & Conventions',
+  '## Common Gotchas',
+];
+
+export function trimConventions(
+  fullConventions: string,
+  sections: string[] = CONVENTIONS_SECTIONS
+): string {
+  if (!fullConventions) return '';
+  const lines = fullConventions.split('\n');
+  const result: string[] = [];
+  let capturing = false;
+
+  for (const line of lines) {
+    if (sections.some((s) => line.startsWith(s))) {
+      capturing = true;
+    } else if (line.startsWith('## ') && capturing) {
+      capturing = false;
+    }
+    if (capturing) result.push(line);
+  }
+
+  return result.join('\n');
+}
+
+export function formatContextForGeneration(bundle: ContextBundle): string {
+  const parts: string[] = [];
+
+  // Trimmed conventions instead of full CLAUDE.md
+  const trimmed = trimConventions(bundle.projectConventions);
+  if (trimmed) {
+    parts.push('## Project Conventions (excerpt)\n```\n' + trimmed + '\n```\n');
+  }
+
+  // Only one example (schema) — the plan constrains the rest
+  if (bundle.exampleSchema) {
+    parts.push(
+      '## Example Schema (user.schema.ts)\n```typescript\n' + bundle.exampleSchema + '\n```\n'
+    );
+  }
+
+  return parts.join('\n');
+}

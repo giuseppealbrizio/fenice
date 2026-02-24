@@ -15,6 +15,24 @@ const generatedFileSchema = new Schema(
   { _id: false }
 );
 
+const planFileSchema = new Schema(
+  {
+    path: { type: String, required: true },
+    type: { type: String, required: true, enum: ['schema', 'model', 'service', 'route', 'test'] },
+    action: { type: String, required: true, enum: ['create', 'modify'] },
+    description: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+const planSchema = new Schema(
+  {
+    files: { type: [planFileSchema], required: true },
+    summary: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 const jobResultSchema = new Schema(
   {
     files: { type: [generatedFileSchema], default: [] },
@@ -54,6 +72,7 @@ const builderJobSchema = new Schema<BuilderJobDocument>(
       includeModel: { type: Boolean, default: true },
       includeTests: { type: Boolean, default: true },
     },
+    plan: { type: planSchema, default: undefined },
     result: { type: jobResultSchema },
     error: { type: jobErrorSchema },
     userId: {
