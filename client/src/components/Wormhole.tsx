@@ -6,7 +6,8 @@ import { Html } from '@react-three/drei';
 import type { CosmosPosition } from '../services/cosmos-layout.service';
 import { useWorldStore } from '../stores/world.store';
 import { LINK_STATE_COLORS } from '../utils/colors';
-import { WORMHOLE } from '../utils/cosmos';
+import { WORMHOLE, STAR_CHART } from '../utils/cosmos';
+import { useViewStore } from '../stores/view.store';
 
 /** Create a procedural radial portal texture. */
 function createPortalTexture(color: string): THREE.CanvasTexture {
@@ -36,11 +37,22 @@ export function Wormhole({ position }: WormholeProps): React.JSX.Element {
   const portalRef = useRef<THREE.Mesh>(null);
   const authGate = useWorldStore((s) => s.authGate);
   const linkStyle = LINK_STATE_COLORS[authGate.linkState];
+  const visualMode = useViewStore((s) => s.visualMode);
+  const isStarChart = visualMode === 'light';
 
   const portalTexture = useMemo(() => createPortalTexture(linkStyle.hex), [linkStyle.hex]);
   const glowTexture = useMemo(() => createPortalTexture(linkStyle.hex), [linkStyle.hex]);
 
   useFrame(({ clock }) => {
+    if (isStarChart) {
+      // Slow steady rotation in star chart
+      if (ringRef.current) {
+        ringRef.current.rotation.x = Math.PI / 2;
+        ringRef.current.rotation.z += 0.002;
+      }
+      return;
+    }
+
     // Ring rotation
     if (ringRef.current) {
       ringRef.current.rotation.x = Math.PI / 2 + Math.sin(clock.elapsedTime * 0.3) * 0.1;
@@ -60,77 +72,102 @@ export function Wormhole({ position }: WormholeProps): React.JSX.Element {
 
   return (
     <group position={[position.x, position.y, position.z]}>
-      {/* Torus ring */}
-      <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry
-          args={[
-            WORMHOLE.ringRadius,
-            WORMHOLE.tubeRadius,
-            WORMHOLE.ringRadialSegments,
-            WORMHOLE.ringSegments,
-          ]}
-        />
-        <meshPhysicalMaterial
-          color={linkStyle.hex}
-          emissive={linkStyle.hex}
-          emissiveIntensity={
-            authGate.open ? WORMHOLE.emissiveIntensity : WORMHOLE.emissiveIntensity * 0.3
-          }
-          metalness={WORMHOLE.metalness}
-          roughness={WORMHOLE.roughness}
-          clearcoat={WORMHOLE.clearcoat}
-        />
-      </mesh>
+      {isStarChart ? (
+        <>
+          {/* Star Chart: wireframe torus */}
+          <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[WORMHOLE.ringRadius, WORMHOLE.tubeRadius * 0.6, 12, 48]} />
+            <meshBasicMaterial color={STAR_CHART.accentColor} wireframe transparent opacity={0.5} />
+          </mesh>
+          {/* Inner crosshair circle */}
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[WORMHOLE.portalRadius * 0.3, WORMHOLE.portalRadius * 0.35, 32]} />
+            <meshBasicMaterial
+              color={STAR_CHART.accentColor}
+              transparent
+              opacity={0.3}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </>
+      ) : (
+        <>
+          {/* Torus ring */}
+          <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry
+              args={[
+                WORMHOLE.ringRadius,
+                WORMHOLE.tubeRadius,
+                WORMHOLE.ringRadialSegments,
+                WORMHOLE.ringSegments,
+              ]}
+            />
+            <meshPhysicalMaterial
+              color={linkStyle.hex}
+              emissive={linkStyle.hex}
+              emissiveIntensity={
+                authGate.open ? WORMHOLE.emissiveIntensity : WORMHOLE.emissiveIntensity * 0.3
+              }
+              metalness={WORMHOLE.metalness}
+              roughness={WORMHOLE.roughness}
+              clearcoat={WORMHOLE.clearcoat}
+            />
+          </mesh>
 
-      {/* Inner portal surface */}
-      <mesh ref={portalRef} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[WORMHOLE.portalRadius, 48]} />
-        <meshBasicMaterial
-          map={portalTexture}
-          transparent
-          opacity={WORMHOLE.portalOpacity}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+          {/* Inner portal surface */}
+          <mesh ref={portalRef} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[WORMHOLE.portalRadius, 48]} />
+            <meshBasicMaterial
+              map={portalTexture}
+              transparent
+              opacity={WORMHOLE.portalOpacity}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
 
-      {/* Glow sprite */}
-      <sprite scale={[6, 6, 1]}>
-        <spriteMaterial
-          map={glowTexture}
-          transparent
-          opacity={authGate.open ? 0.15 : 0.05}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </sprite>
+          {/* Glow sprite */}
+          <sprite scale={[6, 6, 1]}>
+            <spriteMaterial
+              map={glowTexture}
+              transparent
+              opacity={authGate.open ? 0.15 : 0.05}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+            />
+          </sprite>
+
+          {/* Point light */}
+          <pointLight
+            color={linkStyle.hex}
+            intensity={authGate.open ? 1.5 : 0.3}
+            distance={25}
+            decay={2}
+          />
+        </>
+      )}
 
       {/* Label */}
       <Html center occlude={false} position={[0, WORMHOLE.ringRadius + 1.0, 0]}>
         <div
           style={{
             pointerEvents: 'none',
-            fontSize: '14px',
-            fontWeight: 700,
-            color: '#00e5ff',
-            textShadow: '0 0 12px rgba(0,229,255,0.6), 0 0 4px rgba(0,0,0,0.9)',
+            fontSize: isStarChart ? '11px' : '14px',
+            fontWeight: isStarChart ? 500 : 700,
+            color: isStarChart ? STAR_CHART.labelColor : '#00e5ff',
+            textShadow: isStarChart
+              ? 'none'
+              : '0 0 12px rgba(0,229,255,0.6), 0 0 4px rgba(0,0,0,0.9)',
             whiteSpace: 'nowrap',
-            letterSpacing: '2px',
+            letterSpacing: isStarChart ? '1.5px' : '2px',
             textTransform: 'uppercase',
+            fontFamily: isStarChart ? 'monospace' : 'inherit',
           }}
         >
           Gateway
         </div>
       </Html>
-
-      {/* Point light */}
-      <pointLight
-        color={linkStyle.hex}
-        intensity={authGate.open ? 1.5 : 0.3}
-        distance={25}
-        decay={2}
-      />
     </group>
   );
 }

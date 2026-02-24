@@ -94,7 +94,13 @@ export function HUD(): React.JSX.Element {
           }}
           aria-label="Toggle visual mode"
         >
-          Theme: {visualMode === 'dark' ? 'Dark' : 'Light'}
+          {isCosmos
+            ? visualMode === 'dark'
+              ? 'Deep Space'
+              : 'Star Chart'
+            : visualMode === 'dark'
+              ? 'Dark'
+              : 'Light'}
         </button>
         {SCENE_MODE_OPTIONS.map((option) => {
           const active = option.mode === sceneMode;

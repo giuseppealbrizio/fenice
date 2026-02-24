@@ -116,3 +116,22 @@ export const ORBITAL_PATH = {
   lineWidth: 1,
   opacity: 0.15,
 } as const;
+
+// ── Star Chart theme ──────────────────────────────────────────────────────
+
+export const STAR_CHART = {
+  bgColor: '#0a1628',
+  fogColor: '#0a1628',
+  fogDensity: 0.006,
+  gridColor: '#1a2d4d',
+  gridSecondary: '#111e38',
+  wireColor: '#4a8ec2',
+  labelColor: '#8ab4d8',
+  accentColor: '#5eaadd',
+  dimColor: '#2a4a6a',
+  starWireOpacity: 0.6,
+  planetWireOpacity: 0.5,
+  routeOpacity: 0.25,
+  orbitOpacity: 0.3,
+  orbitLineWidth: 1.5,
+} as const;
