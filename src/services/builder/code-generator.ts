@@ -47,10 +47,12 @@ interface ToolLoopConfig {
   userMessage: string;
   projectRoot: string;
   onToolActivity?: ToolActivityCallback | undefined;
+  allowedPlanPaths?: Set<string> | undefined;
 }
 
 async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
-  const { client, systemPrompt, userMessage, projectRoot, onToolActivity } = config;
+  const { client, systemPrompt, userMessage, projectRoot, onToolActivity, allowedPlanPaths } =
+    config;
 
   const files: BuilderGeneratedFile[] = [];
   const violations: ScopePolicyViolation[] = [];
@@ -103,6 +105,17 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
           const path = input['path'] ?? '';
           const content = input['content'] ?? '';
 
+          if (allowedPlanPaths && !allowedPlanPaths.has(path)) {
+            violations.push({ file: path, reason: 'Path not in approved plan' });
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `ERROR: Path not in approved plan: ${path}`,
+              is_error: true,
+            });
+            continue;
+          }
+
           const pathError = validateFilePath(path, 'created');
           if (pathError) {
             violations.push({ file: path, reason: pathError });
@@ -139,6 +152,17 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
         } else if (toolName === 'modify_file') {
           const path = input['path'] ?? '';
           const content = input['content'] ?? '';
+
+          if (allowedPlanPaths && !allowedPlanPaths.has(path)) {
+            violations.push({ file: path, reason: 'Path not in approved plan' });
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `ERROR: Path not in approved plan: ${path}`,
+              is_error: true,
+            });
+            continue;
+          }
 
           // Allow modify on files created in this same generation session
           const effectiveAction = createdPaths.has(path) ? 'created' : 'modified';
@@ -305,6 +329,7 @@ export async function generateCode(
   const userMessage = `${contextText}\n\n${planConstraint}## User Request\n\n${prompt}\n\nGenerate all necessary files using the tools provided. Create complete, production-ready code following the project conventions shown above.`;
 
   const systemPrompt = plan?.taskType ? buildSystemPrompt(plan.taskType) : BUILDER_SYSTEM_PROMPT;
+  const allowedPlanPaths = plan ? new Set(plan.files.map((f) => f.path)) : undefined;
 
   return runToolLoop({
     client,
@@ -312,6 +337,7 @@ export async function generateCode(
     userMessage,
     projectRoot,
     onToolActivity,
+    allowedPlanPaths,
   });
 }
 
