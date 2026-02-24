@@ -3,10 +3,20 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { BuilderGeneratedFile, BuilderPlan } from '../../schemas/builder.schema.js';
 import { BuilderPlanSchema } from '../../schemas/builder.schema.js';
-import { BUILDER_SYSTEM_PROMPT, BUILDER_PLAN_PROMPT, BUILDER_TOOLS, buildPlanConstraint } from './prompt-templates.js';
-import { formatContextForPrompt, formatContextForGeneration, type ContextBundle } from './context-reader.js';
+import {
+  BUILDER_SYSTEM_PROMPT,
+  BUILDER_PLAN_PROMPT,
+  BUILDER_TOOLS,
+  buildPlanConstraint,
+} from './prompt-templates.js';
+import {
+  formatContextForPrompt,
+  formatContextForGeneration,
+  type ContextBundle,
+} from './context-reader.js';
 import {
   validateFilePath,
+  validateReadPath,
   scanContentForDangerousPatterns,
   type ScopePolicyViolation,
 } from './scope-policy.js';
@@ -228,6 +238,16 @@ export async function generateCode(
           });
         } else if (toolName === 'read_file') {
           const path = input['path'] ?? '';
+          const readError = validateReadPath(path);
+          if (readError) {
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `ERROR: ${readError}`,
+              is_error: true,
+            });
+            continue;
+          }
           try {
             const fullPath = join(projectRoot, path);
             const content = await readFile(fullPath, 'utf-8');
@@ -380,6 +400,16 @@ Fix the issues and rewrite ALL files using the tools. Follow the same project co
           });
         } else if (toolName === 'read_file') {
           const path = input['path'] ?? '';
+          const readError = validateReadPath(path);
+          if (readError) {
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `ERROR: ${readError}`,
+              is_error: true,
+            });
+            continue;
+          }
           try {
             const fullPath = join(projectRoot, path);
             const content = await readFile(fullPath, 'utf-8');

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateFilePath,
+  validateReadPath,
   scanContentForDangerousPatterns,
   validateGeneratedFiles,
 } from '../../../../src/services/builder/scope-policy.js';
@@ -205,5 +206,88 @@ describe('validateGeneratedFiles', () => {
     ]);
     expect(violations).toHaveLength(1);
     expect(violations[0]?.file).toBe('package.json');
+  });
+});
+
+describe('validateReadPath', () => {
+  describe('allowed read paths', () => {
+    it('should allow src/ files', () => {
+      expect(validateReadPath('src/schemas/user.schema.ts')).toBeNull();
+      expect(validateReadPath('src/services/auth.service.ts')).toBeNull();
+      expect(validateReadPath('src/index.ts')).toBeNull();
+    });
+
+    it('should allow tests/ files', () => {
+      expect(validateReadPath('tests/unit/schemas/user.schema.test.ts')).toBeNull();
+      expect(validateReadPath('tests/integration/auth.test.ts')).toBeNull();
+    });
+
+    it('should allow CLAUDE.md', () => {
+      expect(validateReadPath('CLAUDE.md')).toBeNull();
+    });
+
+    it('should allow package.json', () => {
+      expect(validateReadPath('package.json')).toBeNull();
+    });
+
+    it('should allow tsconfig.json', () => {
+      expect(validateReadPath('tsconfig.json')).toBeNull();
+    });
+  });
+
+  describe('forbidden read paths', () => {
+    it('should block .env', () => {
+      const result = validateReadPath('.env');
+      expect(result).toContain('Forbidden read path');
+    });
+
+    it('should block .env.local and similar', () => {
+      const result = validateReadPath('.env.local');
+      expect(result).toContain('Forbidden read path');
+    });
+
+    it('should block node_modules/', () => {
+      const result = validateReadPath('node_modules/express/index.js');
+      expect(result).toContain('Forbidden read path');
+    });
+
+    it('should block .git/', () => {
+      const result = validateReadPath('.git/config');
+      expect(result).toContain('Forbidden read path');
+    });
+
+    it('should block dist/', () => {
+      const result = validateReadPath('dist/server.js');
+      expect(result).toContain('Forbidden read path');
+    });
+
+    it('should block .github/', () => {
+      const result = validateReadPath('.github/workflows/ci.yml');
+      expect(result).toContain('Forbidden read path');
+    });
+  });
+
+  describe('path traversal', () => {
+    it('should block path traversal with ..', () => {
+      const result = validateReadPath('../../../etc/passwd');
+      expect(result).toContain('Path traversal');
+    });
+
+    it('should block path traversal with backslash normalization', () => {
+      const result = validateReadPath('src\\..\\..\\etc\\passwd');
+      expect(result).toContain('Path traversal');
+    });
+  });
+
+  describe('paths outside allowed prefixes', () => {
+    it('should block arbitrary root files', () => {
+      const result = validateReadPath('hack.ts');
+      expect(result).toContain('not in allowed read directories');
+    });
+
+    it('should block docker files', () => {
+      const result = validateReadPath('docker-compose.yml');
+      expect(result).toContain('not in allowed read directories');
+    });
   });
 });

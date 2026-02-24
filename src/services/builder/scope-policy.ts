@@ -54,6 +54,31 @@ export interface ScopePolicyViolation {
   reason: string;
 }
 
+const ALLOWED_READ_PREFIXES = ['src/', 'tests/', 'CLAUDE.md', 'package.json', 'tsconfig.json'];
+
+const FORBIDDEN_READ_PATHS = ['.env', '.git/', 'node_modules/', 'dist/', '.github/'];
+
+export function validateReadPath(filePath: string): string | null {
+  const normalized = filePath.replace(/\\/g, '/');
+
+  if (normalized.includes('..')) {
+    return 'Path traversal detected';
+  }
+
+  for (const forbidden of FORBIDDEN_READ_PATHS) {
+    if (normalized === forbidden || normalized.startsWith(forbidden)) {
+      return `Forbidden read path: ${forbidden}`;
+    }
+  }
+
+  const isAllowed = ALLOWED_READ_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  if (!isAllowed) {
+    return `Path not in allowed read directories: ${normalized}`;
+  }
+
+  return null;
+}
+
 export function validateFilePath(filePath: string, action: 'created' | 'modified'): string | null {
   const normalized = filePath.replace(/\\/g, '/');
 
