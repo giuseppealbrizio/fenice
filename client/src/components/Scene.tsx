@@ -9,7 +9,9 @@ import {
   Noise,
 } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
-import { City } from './City';
+import { Cosmos } from './Cosmos';
+import { CameraController } from './CameraController';
+import { CAMERA_NAV } from '../utils/cosmos';
 import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
 import { DustParticles } from './DustParticles';
@@ -74,7 +76,12 @@ export function Scene(): React.JSX.Element {
 
   return (
     <Canvas
-      camera={{ position: [20, 20, 20], fov: 50 }}
+      camera={{
+        position: CAMERA_NAV.defaultPosition,
+        fov: 60,
+        near: 0.1,
+        far: 500,
+      }}
       style={{ width: '100%', height: '100%', backgroundColor: sceneTheme.canvasBg }}
       gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
     >
@@ -106,17 +113,17 @@ export function Scene(): React.JSX.Element {
           position={[0, 0.002, 0]}
         />
       )}
-      <City />
+      <Cosmos />
       <OrbitControls
-        enablePan
-        enableZoom
-        enableRotate
+        makeDefault
         enableDamping
-        dampingFactor={0.05}
-        maxPolarAngle={Math.PI / 2.2}
-        minDistance={5}
-        maxDistance={80}
+        dampingFactor={CAMERA_NAV.dampingFactor}
+        autoRotate
+        autoRotateSpeed={CAMERA_NAV.autoRotateSpeed}
+        minDistance={CAMERA_NAV.minDistance}
+        maxDistance={CAMERA_NAV.maxDistance}
       />
+      <CameraController />
       <SceneEffects isDark={isDark} />
     </Canvas>
   );
