@@ -8,6 +8,7 @@ import {
   WORMHOLE,
   CAMERA_NAV,
   seededRandom,
+  ORBITAL_PATH,
 } from '../utils/cosmos';
 
 describe('COSMOS_LAYOUT', () => {
@@ -72,6 +73,17 @@ describe('seededRandom', () => {
 
   it('produces different values for different indices', () => {
     expect(seededRandom('same', 0)).not.toBe(seededRandom('same', 1));
+  });
+});
+
+describe('ORBITAL_PATH', () => {
+  it('has positive segment count', () => {
+    expect(ORBITAL_PATH.segments).toBeGreaterThan(0);
+  });
+
+  it('opacity is subtle', () => {
+    expect(ORBITAL_PATH.opacity).toBeGreaterThan(0);
+    expect(ORBITAL_PATH.opacity).toBeLessThan(0.5);
   });
 });
 
