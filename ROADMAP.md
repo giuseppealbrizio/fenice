@@ -1,8 +1,8 @@
 # FENICE Roadmap
 
-## v0.1.0 — Foundation Layer ✅
+## Backend Foundation
 
-The foundation is in place. FENICE provides a fully functional, production-ready backend with:
+### v0.1.0 — Foundation Layer ✅
 
 - Hono + Zod OpenAPI routes (auth, users, health, MCP)
 - JWT authentication with access/refresh tokens
@@ -11,76 +11,92 @@ The foundation is in place. FENICE provides a fully functional, production-ready
 - OpenTelemetry auto-instrumentation
 - MCP endpoint for AI agent discovery
 - Scalar interactive docs + LLM-readable docs
-- Vitest + fast-check testing (35 tests)
+- Vitest + fast-check testing
 - Docker multi-stage build + docker-compose
 - GitHub Actions CI pipeline
 - Four-script development workflow
-- Comprehensive documentation
 
-## v0.2.0 — Advanced Backend Features ✅
+### v0.2.0 — Advanced Backend Features ✅
 
-All v0.2.0 features are implemented:
+- WebSocket Support (Hono adapter + rooms + broadcast)
+- Rate Limiting (configurable windows per endpoint)
+- RBAC Middleware (6-level hierarchy)
+- Chunked File Upload (init, chunk, complete, cancel)
+- Cursor-based Pagination (Base64-encoded cursors)
+- Search & Filtering (user listing with query params)
+- Email Verification + Password Reset flows
+- Request Validation Middleware (generic Zod)
+- API Versioning (path-based via middleware)
 
-- **WebSocket Support** — Real-time communication via Hono WebSocket adapter + rooms + broadcast
-- **Rate Limiting** — Request throttling with configurable windows per endpoint
-- **RBAC Middleware** — Role-based access control with 6-level hierarchy
-- **File Upload** — Chunked upload system (init, chunk, complete, cancel)
-- **Pagination** — Cursor-based pagination with Base64-encoded cursors
-- **Search & Filtering** — Query parameter support for user listing (email, username, role, date range)
-- **Email Verification** — Account verification flow using the email adapter
-- **Password Reset** — Reset flow with token generation and SHA-256 hashing
-- **Request Validation Middleware** — Generic Zod validation middleware
-- **API Versioning Strategy** — Path-based versioning via middleware
+### v0.3.0 — Security & Production Adapters ✅
 
-## v0.3.0 — Security & Production Adapters ✅
+- Security Headers, CORS, Request Timeout, Body Size Limit
+- Account Lockout (configurable threshold + duration)
+- Logout with token revocation
+- Graceful Shutdown (SIGTERM/SIGINT)
+- Production adapters: Resend (email), GCS (storage), FCM (messaging)
 
-Security hardening and production-ready external service integrations:
+---
 
-- **Security Headers** — via `hono/secure-headers` (X-Content-Type-Options, X-Frame-Options, etc.)
-- **CORS** — Configurable via `CLIENT_URL` environment variable
-- **Request Timeout** — Configurable `REQUEST_TIMEOUT_MS` middleware
-- **Body Size Limit** — Configurable `BODY_SIZE_LIMIT_BYTES` middleware
-- **Account Lockout** — Configurable failed login threshold + lockout duration
-- **Logout Endpoint** — `POST /auth/logout` with token revocation
-- **Graceful Shutdown** — SIGTERM/SIGINT handler with Mongoose disconnect
-- **ResendEmailAdapter** — Production email via Resend SDK
-- **GcsStorageAdapter** — Production storage via Google Cloud Storage SDK
-- **FcmMessagingAdapter** — Production push notifications via Firebase Admin SDK
+## 3D World + AI Platform
 
-## Next — Scale & Optimize
+Two complementary tracks evolving together. See [design doc](docs/plans/2026-02-24-fenice-evolution-design.md) for full details.
 
-Infrastructure and performance improvements for production scale:
+### Completed
 
-- **Redis Caching** — Response caching and session store with Redis adapter
-- **Queue Workers** — Background job processing (email sending, data processing)
-- **K8s Autoscaling** — Horizontal Pod Autoscaler configuration
-- **Database Indexing** — Performance-tuned MongoDB indexes beyond the current email/username index
-- **Connection Pooling** — Optimized MongoDB connection management
-- **Health Check Enhancements** — Deep dependency checks (Redis, queues, external services)
-- **Metrics Endpoint** — Prometheus-compatible metrics export
-- **Audit Logging** — Structured audit trail for security-sensitive operations
-- **Multi-tenancy** — Tenant isolation at the data layer
-- **GraphQL Gateway** — Optional GraphQL layer alongside REST
+| Milestone | Track | Description |
+|-----------|-------|-------------|
+| M1 | 3D | Static city from OpenAPI |
+| M2A | 3D | Typed deltas + reducer + resync guard |
+| M2B | 3D | Semantic contract (ok/degraded/blocked/unknown, zoning, auth gate) |
+| M2C | 3D | Tron visual language (radial corridors, gate pulse/haze, HUD legend) |
+| M2D | 3D | Visual clarity + KPI safety pass |
+| M3 | Agent | AI Builder: prompt-to-PR with safety gates, validation, self-repair |
+| M3.1 | Agent | Two-phase builder: plan-then-generate with user approval gate |
 
-## v1.0.0 — 3D World
+### Active Roadmap
 
-The AI-native 3D city experience (React Three Fiber, AI builder, city metaphor). See [design doc](docs/plans/2026-02-21-fenice-design.md) for details.
+```
+Track A (3D Visual)            Track B (Agent)
 
-### Milestone status
+  M4: Atmosphere                 M5: Builder v2
+       |                              |
+  M6: Cosmos  ──────────────── M7: MCP Live        ← first bridge
+       |             ╲                |
+  M8: Observability ──────── M9: Agent Swarm       ← full integration
+       |                              |
+  M10: Interactive Design      M11: Team Enterprise
+```
 
-| Milestone | Status | Description |
-|-----------|--------|-------------|
-| M1 | Done | Static city from OpenAPI |
-| M2A | Done | Typed deltas + reducer + resync guard |
-| M2B | Done | Semantic contract (ok/degraded/blocked/unknown, zoning, auth gate) |
-| M2C | Done | Tron visual language (radial corridors, gate pulse/haze, HUD legend) |
-| M2D | Done | Visual clarity + KPI safety pass |
-| **M2** | **Closed** | **All sub-milestones complete, demo narrative shipped** |
-| **M3** | **Done** | **AI Builder: prompt-to-PR with safety gates, validation, self-repair, 3D world integration** |
-| **M3.1** | **Done** | **Two-phase builder: plan-then-generate with user approval, glowy UI, context reduction, timeouts** |
-| M4 | Next | Multi-user collaboration |
+| Milestone | Track | Status | Dependencies | Description |
+|-----------|-------|--------|--------------|-------------|
+| **M4** | 3D | Next | M3.1 | **Atmosphere** — Post-processing (bloom, vignette, fog), skybox (stars, nebulae, dust), material upgrade (PBR, emissive, clearcoat), dark cosmic palette |
+| **M5** | Agent | Next | M3.1 | **Builder v2** — Broader task types (refactoring, bug fix, test gen), smarter context reading, multi-retry recovery, enhanced dry-run |
+| **M6** | 3D | — | M4 | **Cosmos** — Services as planetary systems, endpoints as orbiting planets (shape by HTTP method), curved luminous routes, auth gate as wormhole, orbital navigation |
+| **M7** | Bridge | — | M5 + M6 | **MCP Live** — Real MCP server with executable tools, agent connection protocol, agent presence in 3D cosmos, activity trails, agent HUD |
+| **M8** | Bridge | — | M6 + M7 | **Observability** — OTel data pipeline to 3D, traffic particles on routes, planet heatmaps (latency/errors), anomaly detection with visual alerts |
+| **M9** | Agent | — | M7 + M8 | **Agent Swarm** — Multi-agent orchestration (Generator, Reviewer, Tester, Monitor), task decomposition, A2A via FENICE hub, swarm visualization |
+| **M10** | 3D | — | M6 + M9 | **Interactive Design** — Drag & drop planet creation, visual schema editor, agent-assisted design, undo/redo timeline, template gallery |
+| **M11** | Agent | — | M9 | **Team Enterprise** — Multi-user presence, agent teams per user, permission model, shared code review in 3D |
 
-Execution tracking: [docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md](docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md).
+**Parallelism:** M4 and M5 are fully independent. From M7 onward, milestones are sequential.
+
+### Future — Scale & Optimize (Backlog)
+
+Infrastructure improvements to be scheduled as needed:
+
+- Redis Caching (response cache + session store)
+- Queue Workers (background job processing)
+- Database Indexing (performance-tuned MongoDB indexes)
+- Metrics Endpoint (Prometheus-compatible export)
+- Audit Logging (structured audit trail)
+
+---
+
+## Execution Tracking
+
+- Design doc: [docs/plans/2026-02-24-fenice-evolution-design.md](docs/plans/2026-02-24-fenice-evolution-design.md)
+- 3D world history: [docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md](docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md)
 
 ## Contributing
 
