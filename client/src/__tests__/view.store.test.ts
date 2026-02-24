@@ -6,10 +6,11 @@ describe('useViewStore', () => {
     useViewStore.getState().reset();
   });
 
-  it('has dark mode and hidden grid by default', () => {
+  it('has dark mode, cosmos scene, and hidden grid by default', () => {
     const state = useViewStore.getState();
     expect(state.visualMode).toBe('dark');
     expect(state.routeLayerMode).toBe('city');
+    expect(state.sceneMode).toBe('cosmos');
     expect(state.showGrid).toBe(false);
   });
 
@@ -35,5 +36,40 @@ describe('useViewStore', () => {
 
     useViewStore.getState().setRouteLayerMode('both');
     expect(useViewStore.getState().routeLayerMode).toBe('both');
+  });
+
+  it('toggles scene mode between cosmos and tron', () => {
+    expect(useViewStore.getState().sceneMode).toBe('cosmos');
+
+    useViewStore.getState().toggleSceneMode();
+    expect(useViewStore.getState().sceneMode).toBe('tron');
+
+    useViewStore.getState().toggleSceneMode();
+    expect(useViewStore.getState().sceneMode).toBe('cosmos');
+  });
+
+  it('sets scene mode directly', () => {
+    useViewStore.getState().setSceneMode('tron');
+    expect(useViewStore.getState().sceneMode).toBe('tron');
+
+    useViewStore.getState().setSceneMode('cosmos');
+    expect(useViewStore.getState().sceneMode).toBe('cosmos');
+  });
+
+  describe('focusTarget', () => {
+    it('defaults to null', () => {
+      expect(useViewStore.getState().focusTarget).toBeNull();
+    });
+
+    it('setFocusTarget updates state', () => {
+      useViewStore.getState().setFocusTarget([10, 5, 10]);
+      expect(useViewStore.getState().focusTarget).toEqual([10, 5, 10]);
+    });
+
+    it('setFocusTarget(null) clears target', () => {
+      useViewStore.getState().setFocusTarget([10, 5, 10]);
+      useViewStore.getState().setFocusTarget(null);
+      expect(useViewStore.getState().focusTarget).toBeNull();
+    });
   });
 });
