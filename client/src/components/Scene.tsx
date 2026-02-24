@@ -12,7 +12,7 @@ import { BlendFunction } from 'postprocessing';
 import { City } from './City';
 import { Cosmos } from './Cosmos';
 import { CameraController } from './CameraController';
-import { CAMERA_NAV } from '../utils/cosmos';
+import { CAMERA_NAV, STAR_CHART } from '../utils/cosmos';
 import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
 import { DustParticles } from './DustParticles';
@@ -48,11 +48,26 @@ const SCENE_THEME = {
   },
 } as const;
 
-function SceneEffects({ isDark }: { isDark: boolean }): React.JSX.Element | null {
+function SceneEffects({
+  isDark,
+  isStarChart,
+}: {
+  isDark: boolean;
+  isStarChart: boolean;
+}): React.JSX.Element | null {
   const bloomIntensity = useCosmosSettingsStore((s) => s.bloomIntensity);
   const bloomThreshold = useCosmosSettingsStore((s) => s.bloomThreshold);
 
-  if (!isDark) return null;
+  if (!isDark && !isStarChart) return null;
+
+  // Star chart: very subtle vignette only, no bloom/CA/noise
+  if (isStarChart) {
+    return (
+      <EffectComposer>
+        <Vignette offset={0.4} darkness={0.5} />
+      </EffectComposer>
+    );
+  }
 
   return (
     <EffectComposer>
@@ -81,9 +96,22 @@ export function Scene(): React.JSX.Element {
   const visualMode = useViewStore((s) => s.visualMode);
   const showGrid = useViewStore((s) => s.showGrid);
   const sceneMode = useViewStore((s) => s.sceneMode);
-  const sceneTheme = SCENE_THEME[visualMode];
   const isDark = visualMode === 'dark';
   const isCosmos = sceneMode === 'cosmos';
+  const isStarChart = isCosmos && !isDark;
+
+  // In cosmos star chart mode, override the theme
+  const sceneTheme = isStarChart
+    ? {
+        canvasBg: STAR_CHART.bgColor,
+        groundColor: STAR_CHART.bgColor,
+        ambientIntensity: 0.4,
+        keyLight: 0.3,
+        fillLight: 0.2,
+        gridMajor: STAR_CHART.gridColor,
+        gridMinor: STAR_CHART.gridSecondary,
+      }
+    : SCENE_THEME[visualMode];
 
   const cameraPosition = isCosmos ? CAMERA_NAV.defaultPosition : TRON_CAMERA.position;
   const cameraFov = isCosmos ? 60 : TRON_CAMERA.fov;
@@ -97,10 +125,14 @@ export function Scene(): React.JSX.Element {
         far: 500,
       }}
       style={{ width: '100%', height: '100%', backgroundColor: sceneTheme.canvasBg }}
-      gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
+      gl={{
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: isStarChart ? 1.0 : 1.2,
+      }}
     >
       {isDark && <fogExp2 attach="fog" args={[SCENE_FOG.color, SCENE_FOG.density]} />}
-      {isDark && (
+      {isStarChart && <fogExp2 attach="fog" args={[STAR_CHART.fogColor, STAR_CHART.fogDensity]} />}
+      {isDark && !isStarChart && (
         <>
           <StarField />
           <Nebulae />
@@ -109,22 +141,29 @@ export function Scene(): React.JSX.Element {
       )}
       <ambientLight
         intensity={sceneTheme.ambientIntensity}
-        color={isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
+        color={isStarChart ? '#4a6a9a' : isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
       />
       <directionalLight
         position={COSMIC_LIGHTING.keyLightPosition}
         intensity={sceneTheme.keyLight}
-        color={isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
+        color={isStarChart ? '#6090c0' : isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
       />
       <directionalLight position={[-10, 15, -10]} intensity={sceneTheme.fillLight} />
-      {/* Ground plane for Tron City mode or light theme */}
-      {(!isDark || !isCosmos) && (
+      {/* Ground plane for Tron City mode */}
+      {!isCosmos && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
           <planeGeometry args={[200, 200]} />
           <meshStandardMaterial color={sceneTheme.groundColor} roughness={1} />
         </mesh>
       )}
-      {showGrid && (
+      {/* Star chart: always show coordinate grid */}
+      {(showGrid || isStarChart) && isCosmos && (
+        <gridHelper
+          args={[120, 40, sceneTheme.gridMajor, sceneTheme.gridMinor]}
+          position={[0, -0.5, 0]}
+        />
+      )}
+      {showGrid && !isCosmos && (
         <gridHelper
           args={[60, 60, sceneTheme.gridMajor, sceneTheme.gridMinor]}
           position={[0, 0.002, 0]}
@@ -135,13 +174,13 @@ export function Scene(): React.JSX.Element {
         makeDefault
         enableDamping
         dampingFactor={CAMERA_NAV.dampingFactor}
-        autoRotate={isCosmos}
+        autoRotate={isCosmos && isDark}
         autoRotateSpeed={CAMERA_NAV.autoRotateSpeed}
         minDistance={CAMERA_NAV.minDistance}
         maxDistance={CAMERA_NAV.maxDistance}
       />
       {isCosmos && <CameraController />}
-      <SceneEffects isDark={isDark} />
+      <SceneEffects isDark={isDark} isStarChart={isStarChart} />
     </Canvas>
   );
 }

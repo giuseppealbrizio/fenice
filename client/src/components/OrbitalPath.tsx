@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Line } from '@react-three/drei';
 import type { CosmosPosition } from '../services/cosmos-layout.service';
 import { computeOrbitPoint } from '../services/cosmos-layout.service';
-import { ORBITAL_PATH } from '../utils/cosmos';
+import { ORBITAL_PATH, STAR_CHART } from '../utils/cosmos';
+import { useViewStore } from '../stores/view.store';
 
 interface OrbitalPathProps {
   center: CosmosPosition;
@@ -12,6 +13,9 @@ interface OrbitalPathProps {
 }
 
 export function OrbitalPath({ center, radius, tilt, color }: OrbitalPathProps): React.JSX.Element {
+  const visualMode = useViewStore((s) => s.visualMode);
+  const isStarChart = visualMode === 'light';
+
   const points = useMemo(() => {
     const pts: [number, number, number][] = [];
     for (let i = 0; i <= ORBITAL_PATH.segments; i++) {
@@ -25,9 +29,9 @@ export function OrbitalPath({ center, radius, tilt, color }: OrbitalPathProps): 
   return (
     <Line
       points={points}
-      color={color}
-      lineWidth={ORBITAL_PATH.lineWidth}
-      opacity={ORBITAL_PATH.opacity}
+      color={isStarChart ? STAR_CHART.dimColor : color}
+      lineWidth={isStarChart ? STAR_CHART.orbitLineWidth : ORBITAL_PATH.lineWidth}
+      opacity={isStarChart ? STAR_CHART.orbitOpacity : ORBITAL_PATH.opacity}
       transparent
     />
   );

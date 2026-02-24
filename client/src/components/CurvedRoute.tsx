@@ -2,9 +2,11 @@
 import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 import type { CosmosPosition } from '../services/cosmos-layout.service';
-import { CURVED_ROUTE } from '../utils/cosmos';
+import { CURVED_ROUTE, STAR_CHART } from '../utils/cosmos';
 import { useCosmosSettingsStore } from '../stores/cosmos-settings.store';
+import { useViewStore } from '../stores/view.store';
 
 interface CurvedRouteProps {
   from: CosmosPosition;
@@ -26,6 +28,8 @@ export function CurvedRoute({
   const pulseRef = useRef<THREE.Mesh>(null);
   const archHeight = useCosmosSettingsStore((s) => s.routeArchHeight);
   const settingsOpacity = useCosmosSettingsStore((s) => s.routeOpacity);
+  const visualMode = useViewStore((s) => s.visualMode);
+  const isStarChart = visualMode === 'light';
 
   // Settings opacity acts as the base; explicit opacity prop scales proportionally
   const baseOpacity =
@@ -51,13 +55,37 @@ export function CurvedRoute({
     [curve, tubeRadius]
   );
 
-  // Animate pulse sphere along the curve
+  // Star chart: thin dashed line, no tube, no pulse
+  const starChartPoints = useMemo(() => {
+    if (!isStarChart) return [];
+    const pts: [number, number, number][] = [];
+    for (let i = 0; i <= 48; i++) {
+      const t = i / 48;
+      const p = curve.getPoint(t);
+      pts.push([p.x, p.y, p.z]);
+    }
+    return pts;
+  }, [isStarChart, curve]);
+
+  // Animate pulse sphere along the curve (deep space only)
   useFrame(({ clock }) => {
-    if (!pulseRef.current) return;
+    if (!pulseRef.current || isStarChart) return;
     const t = (clock.elapsedTime * CURVED_ROUTE.pulseSpeed) % 1;
     const point = curve.getPoint(t);
     pulseRef.current.position.copy(point);
   });
+
+  if (isStarChart) {
+    return (
+      <Line
+        points={starChartPoints}
+        color={STAR_CHART.dimColor}
+        lineWidth={1}
+        opacity={STAR_CHART.routeOpacity}
+        transparent
+      />
+    );
+  }
 
   return (
     <group>

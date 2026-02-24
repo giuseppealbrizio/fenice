@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { EndpointPlanetLayout } from '../services/cosmos-layout.service';
 import type { WorldEndpoint } from '../types/world';
-import { ENDPOINT_PLANET, METHOD_SHAPES } from '../utils/cosmos';
+import { ENDPOINT_PLANET, METHOD_SHAPES, STAR_CHART } from '../utils/cosmos';
 import type { PlanetShape } from '../utils/cosmos';
 import { METHOD_COLORS, LINK_STATE_COLORS } from '../utils/colors';
 import { useSelectionStore } from '../stores/selection.store';
@@ -49,8 +49,10 @@ export function EndpointPlanet({ planet, endpoint }: EndpointPlanetProps): React
   const setSelected = useSelectionStore((s) => s.setSelected);
   const semantics = useWorldStore((s) => s.endpointSemantics[endpoint.id]);
   const setFocusTarget = useViewStore((s) => s.setFocusTarget);
+  const visualMode = useViewStore((s) => s.visualMode);
   const orbitSpeedMultiplier = useCosmosSettingsStore((s) => s.orbitSpeed);
 
+  const isStarChart = visualMode === 'light';
   const isSelected = selectedId === endpoint.id;
   const methodColor = METHOD_COLORS[endpoint.method];
   const linkStyle = semantics ? LINK_STATE_COLORS[semantics.linkState] : LINK_STATE_COLORS.unknown;
@@ -59,7 +61,6 @@ export function EndpointPlanet({ planet, endpoint }: EndpointPlanetProps): React
     (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
       setSelected(isSelected ? null : endpoint.id);
-      // Click-to-focus: camera targets this planet's orbit center
       if (!isSelected) {
         setFocusTarget([planet.orbitCenter.x, planet.orbitCenter.y, planet.orbitCenter.z]);
       }
@@ -105,7 +106,6 @@ export function EndpointPlanet({ planet, endpoint }: EndpointPlanetProps): React
 
   return (
     <group ref={groupRef}>
-      {/* Planet body */}
       <mesh
         ref={meshRef}
         onClick={handleClick}
@@ -113,32 +113,43 @@ export function EndpointPlanet({ planet, endpoint }: EndpointPlanetProps): React
         onPointerOut={handlePointerOut}
       >
         <PlanetGeometry method={endpoint.method} size={planet.size} />
-        <meshPhysicalMaterial
-          color={isSelected ? '#ffffff' : methodColor}
-          emissive={methodColor}
-          emissiveIntensity={isSelected ? 0.6 : ENDPOINT_PLANET.emissiveIntensity}
-          roughness={ENDPOINT_PLANET.roughness}
-          metalness={ENDPOINT_PLANET.metalness}
-          clearcoat={ENDPOINT_PLANET.clearcoat}
-          clearcoatRoughness={ENDPOINT_PLANET.clearcoatRoughness}
-          transparent={linkStyle.opacity < 1}
-          opacity={linkStyle.opacity}
-        />
+        {isStarChart ? (
+          <meshBasicMaterial
+            color={isSelected ? STAR_CHART.accentColor : STAR_CHART.wireColor}
+            wireframe
+            transparent
+            opacity={hovered ? STAR_CHART.planetWireOpacity + 0.2 : STAR_CHART.planetWireOpacity}
+          />
+        ) : (
+          <meshPhysicalMaterial
+            color={isSelected ? '#ffffff' : methodColor}
+            emissive={methodColor}
+            emissiveIntensity={isSelected ? 0.6 : ENDPOINT_PLANET.emissiveIntensity}
+            roughness={ENDPOINT_PLANET.roughness}
+            metalness={ENDPOINT_PLANET.metalness}
+            clearcoat={ENDPOINT_PLANET.clearcoat}
+            clearcoatRoughness={ENDPOINT_PLANET.clearcoatRoughness}
+            transparent={linkStyle.opacity < 1}
+            opacity={linkStyle.opacity}
+          />
+        )}
       </mesh>
 
-      {/* Wireframe overlay */}
-      <mesh>
-        <PlanetGeometry method={endpoint.method} size={planet.size * 1.02} />
-        <meshBasicMaterial
-          color={methodColor}
-          wireframe
-          transparent
-          opacity={
-            hovered ? ENDPOINT_PLANET.wireframeOpacity * 2 : ENDPOINT_PLANET.wireframeOpacity
-          }
-          depthWrite={false}
-        />
-      </mesh>
+      {/* Wireframe overlay (deep space only) */}
+      {!isStarChart && (
+        <mesh>
+          <PlanetGeometry method={endpoint.method} size={planet.size * 1.02} />
+          <meshBasicMaterial
+            color={methodColor}
+            wireframe
+            transparent
+            opacity={
+              hovered ? ENDPOINT_PLANET.wireframeOpacity * 2 : ENDPOINT_PLANET.wireframeOpacity
+            }
+            depthWrite={false}
+          />
+        </mesh>
+      )}
     </group>
   );
 }
