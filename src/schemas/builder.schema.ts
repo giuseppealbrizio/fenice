@@ -54,8 +54,8 @@ export const BuilderJobResultSchema = z.object({
   validationErrors: z.array(z.string()).optional(),
   tokenUsage: z
     .object({
-      input: z.number(),
-      output: z.number(),
+      inputTokens: z.number().int().nonnegative(),
+      outputTokens: z.number().int().nonnegative(),
     })
     .optional(),
   diffs: z

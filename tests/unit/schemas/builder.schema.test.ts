@@ -481,10 +481,10 @@ describe('BuilderJobResultSchema enriched fields (Task 3)', () => {
   it('should accept tokenUsage', () => {
     const result = BuilderJobResultSchema.parse({
       ...baseResult,
-      tokenUsage: { input: 15000, output: 3500 },
+      tokenUsage: { inputTokens: 15000, outputTokens: 3500 },
     });
-    expect(result.tokenUsage?.input).toBe(15000);
-    expect(result.tokenUsage?.output).toBe(3500);
+    expect(result.tokenUsage?.inputTokens).toBe(15000);
+    expect(result.tokenUsage?.outputTokens).toBe(3500);
   });
 
   it('should accept diffs', () => {
@@ -528,7 +528,7 @@ describe('BuilderJobResultSchema enriched fields (Task 3)', () => {
       branch: 'builder/abc-products',
       validationPassed: false,
       validationErrors: ['TS2345: type mismatch'],
-      tokenUsage: { input: 20000, output: 5000 },
+      tokenUsage: { inputTokens: 20000, outputTokens: 5000 },
       diffs: [{ path: 'src/test.ts', diff: '+code' }],
       planCoverage: {
         planned: ['src/test.ts'],
@@ -538,7 +538,7 @@ describe('BuilderJobResultSchema enriched fields (Task 3)', () => {
       impactedFiles: ['src/index.ts'],
     });
     expect(result.validationErrors).toHaveLength(1);
-    expect(result.tokenUsage?.input).toBe(20000);
+    expect(result.tokenUsage?.inputTokens).toBe(20000);
     expect(result.diffs).toHaveLength(1);
     expect(result.planCoverage?.missing).toEqual([]);
     expect(result.impactedFiles).toHaveLength(1);

@@ -30,7 +30,7 @@ const planSchema = new Schema(
     files: { type: [planFileSchema], required: true },
     summary: { type: String, required: true },
     taskType: { type: String, enum: TaskTypeEnum.options },
-    contextFiles: { type: [String] },
+    contextFiles: { type: [String], default: undefined },
   },
   { _id: false }
 );
@@ -54,8 +54,8 @@ const planCoverageSchema = new Schema(
 
 const tokenUsageSchema = new Schema(
   {
-    input: { type: Number, required: true },
-    output: { type: Number, required: true },
+    inputTokens: { type: Number, required: true },
+    outputTokens: { type: Number, required: true },
   },
   { _id: false }
 );
@@ -67,11 +67,11 @@ const jobResultSchema = new Schema(
     prNumber: Number,
     branch: String,
     validationPassed: Boolean,
-    validationErrors: { type: [String] },
+    validationErrors: { type: [String], default: undefined },
     tokenUsage: { type: tokenUsageSchema },
-    diffs: { type: [diffSchema] },
+    diffs: { type: [diffSchema], default: undefined },
     planCoverage: { type: planCoverageSchema },
-    impactedFiles: { type: [String] },
+    impactedFiles: { type: [String], default: undefined },
   },
   { _id: false }
 );
