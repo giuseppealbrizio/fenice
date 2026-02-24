@@ -7,11 +7,13 @@ interface ViewState {
   visualMode: VisualMode;
   routeLayerMode: RouteLayerMode;
   showGrid: boolean;
+  focusTarget: [number, number, number] | null;
   setVisualMode: (mode: VisualMode) => void;
   toggleVisualMode: () => void;
   setRouteLayerMode: (mode: RouteLayerMode) => void;
   setShowGrid: (show: boolean) => void;
   toggleGrid: () => void;
+  setFocusTarget: (target: [number, number, number] | null) => void;
   reset: () => void;
 }
 
@@ -19,17 +21,20 @@ const initialViewState = {
   visualMode: 'dark' as VisualMode,
   routeLayerMode: 'city' as RouteLayerMode,
   showGrid: false,
+  focusTarget: null as [number, number, number] | null,
 };
 
 export const useViewStore = create<ViewState>((set) => ({
   visualMode: initialViewState.visualMode,
   routeLayerMode: initialViewState.routeLayerMode,
   showGrid: initialViewState.showGrid,
+  focusTarget: initialViewState.focusTarget,
   setVisualMode: (mode) => set({ visualMode: mode }),
   toggleVisualMode: () =>
     set((state) => ({ visualMode: state.visualMode === 'dark' ? 'light' : 'dark' })),
   setRouteLayerMode: (mode) => set({ routeLayerMode: mode }),
   setShowGrid: (show) => set({ showGrid: show }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+  setFocusTarget: (target) => set({ focusTarget: target }),
   reset: () => set(initialViewState),
 }));
