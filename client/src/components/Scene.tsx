@@ -1,15 +1,33 @@
+import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import {
+  EffectComposer,
+  Bloom,
+  Vignette,
+  ChromaticAberration,
+  Noise,
+} from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing';
 import { City } from './City';
 import { useViewStore } from '../stores/view.store';
+import {
+  COSMIC_PALETTE,
+  SCENE_FOG,
+  BLOOM_CONFIG,
+  VIGNETTE_CONFIG,
+  CHROMATIC_ABERRATION_CONFIG,
+  NOISE_CONFIG,
+  COSMIC_LIGHTING,
+} from '../utils/atmosphere';
 
 const SCENE_THEME = {
   dark: {
-    canvasBg: '#01030f',
+    canvasBg: COSMIC_PALETTE.bgDeep,
     groundColor: '#050510',
-    ambientIntensity: 0.62,
-    keyLight: 0.84,
-    fillLight: 0.32,
+    ambientIntensity: COSMIC_LIGHTING.ambientIntensity,
+    keyLight: COSMIC_LIGHTING.keyLightIntensity,
+    fillLight: 0.2,
     gridMajor: '#1b2440',
     gridMinor: '#131b33',
   },
@@ -24,25 +42,54 @@ const SCENE_THEME = {
   },
 } as const;
 
+function SceneEffects({ isDark }: { isDark: boolean }): React.JSX.Element | null {
+  if (!isDark) return null;
+
+  return (
+    <EffectComposer>
+      <Bloom
+        intensity={BLOOM_CONFIG.intensity}
+        luminanceThreshold={BLOOM_CONFIG.luminanceThreshold}
+        luminanceSmoothing={BLOOM_CONFIG.luminanceSmoothing}
+        mipmapBlur={BLOOM_CONFIG.mipmapBlur}
+      />
+      <Vignette offset={VIGNETTE_CONFIG.offset} darkness={VIGNETTE_CONFIG.darkness} />
+      <ChromaticAberration
+        offset={new THREE.Vector2(...CHROMATIC_ABERRATION_CONFIG.offset)}
+        blendFunction={BlendFunction.NORMAL}
+      />
+      <Noise opacity={NOISE_CONFIG.opacity} blendFunction={BlendFunction.SOFT_LIGHT} />
+    </EffectComposer>
+  );
+}
+
 export function Scene(): React.JSX.Element {
   const visualMode = useViewStore((s) => s.visualMode);
   const showGrid = useViewStore((s) => s.showGrid);
   const sceneTheme = SCENE_THEME[visualMode];
+  const isDark = visualMode === 'dark';
 
   return (
     <Canvas
       camera={{ position: [20, 20, 20], fov: 50 }}
       style={{ width: '100%', height: '100%', backgroundColor: sceneTheme.canvasBg }}
+      gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
     >
-      <ambientLight intensity={sceneTheme.ambientIntensity} />
-      <directionalLight position={[15, 25, 15]} intensity={sceneTheme.keyLight} />
+      {isDark && <fogExp2 attach="fog" args={[SCENE_FOG.color, SCENE_FOG.density]} />}
+      <ambientLight
+        intensity={sceneTheme.ambientIntensity}
+        color={isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
+      />
+      <directionalLight
+        position={COSMIC_LIGHTING.keyLightPosition}
+        intensity={sceneTheme.keyLight}
+        color={isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
+      />
       <directionalLight position={[-10, 15, -10]} intensity={sceneTheme.fillLight} />
-      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[200, 200]} />
         <meshStandardMaterial color={sceneTheme.groundColor} roughness={1} />
       </mesh>
-      {/* Optional grid overlay (faint) */}
       {showGrid && (
         <gridHelper
           args={[60, 60, sceneTheme.gridMajor, sceneTheme.gridMinor]}
@@ -54,10 +101,13 @@ export function Scene(): React.JSX.Element {
         enablePan
         enableZoom
         enableRotate
+        enableDamping
+        dampingFactor={0.05}
         maxPolarAngle={Math.PI / 2.2}
         minDistance={5}
         maxDistance={80}
       />
+      <SceneEffects isDark={isDark} />
     </Canvas>
   );
 }
