@@ -169,3 +169,92 @@ export function formatContextForGeneration(bundle: ContextBundle): string {
 
   return parts.join('\n');
 }
+
+// --- Dynamic Context (M5) ---
+
+export interface ContextFileContent {
+  path: string;
+  content: string;
+}
+
+export interface DynamicContextBundle {
+  conventions: string;
+  contextFiles: ContextFileContent[];
+}
+
+const DEFAULT_CONTEXT_FILES = [
+  'src/schemas/user.schema.ts',
+  'src/models/user.model.ts',
+  'src/services/user.service.ts',
+  'src/routes/user.routes.ts',
+];
+
+const DEFAULT_MAX_CONTEXT_CHARS = 32_000; // ~8000 tokens at ~4 chars/token
+
+/**
+ * Reads requested contextFiles from disk; falls back to DEFAULT_CONTEXT_FILES if empty.
+ * Respects a token budget (maxChars). Truncates files that exceed remaining budget.
+ */
+export async function buildDynamicContext(
+  projectRoot: string,
+  contextFiles: string[],
+  maxChars?: number
+): Promise<DynamicContextBundle> {
+  const budget = maxChars ?? DEFAULT_MAX_CONTEXT_CHARS;
+
+  // Always read CLAUDE.md for conventions
+  const rawConventions = await safeReadFile(join(projectRoot, 'CLAUDE.md'));
+  const conventions = trimConventions(rawConventions);
+
+  // Use default files if none specified
+  const filesToRead = contextFiles.length > 0 ? contextFiles : DEFAULT_CONTEXT_FILES;
+
+  const result: ContextFileContent[] = [];
+  let usedChars = 0;
+
+  for (const filePath of filesToRead) {
+    if (usedChars >= budget) {
+      break;
+    }
+
+    const content = await safeReadFile(join(projectRoot, filePath));
+    if (!content) {
+      // Include empty entry so caller knows the file was attempted but missing
+      result.push({ path: filePath, content: '' });
+      continue;
+    }
+
+    const remaining = budget - usedChars;
+    if (content.length > remaining) {
+      result.push({
+        path: filePath,
+        content: content.slice(0, remaining) + '\n\n... [truncated]',
+      });
+      usedChars = budget;
+    } else {
+      result.push({ path: filePath, content });
+      usedChars += content.length;
+    }
+  }
+
+  return { conventions, contextFiles: result };
+}
+
+/**
+ * Formats a DynamicContextBundle into text for the LLM system message.
+ */
+export function formatDynamicContext(bundle: DynamicContextBundle): string {
+  const parts: string[] = [];
+
+  if (bundle.conventions) {
+    parts.push('## Project Conventions (excerpt)\n```\n' + bundle.conventions + '\n```\n');
+  }
+
+  for (const file of bundle.contextFiles) {
+    if (file.content) {
+      parts.push(`## ${file.path}\n\`\`\`typescript\n${file.content}\n\`\`\`\n`);
+    }
+  }
+
+  return parts.join('\n');
+}
