@@ -76,6 +76,13 @@ export const WIREFRAME_OVERLAY = {
   lineWidth: 1,
 } as const;
 
+export const DISTRICT_LIGHT = {
+  height: 4,
+  intensity: 0.5,
+  distance: 15,
+  decay: 2,
+} as const;
+
 export const COSMIC_LIGHTING = {
   ambientIntensity: 0.15,
   ambientColor: '#1a1a3e',
