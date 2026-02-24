@@ -22,14 +22,14 @@ const ROUTE_LAYER_OPTIONS: Array<{ mode: RouteLayerMode; label: string }> = [
 
 const HUD_THEME = {
   dark: {
-    text: '#a8b4d6',
+    text: '#c7d6ff',
     muted: '#6f7ca3',
-    divider: '#2a3553',
-    panelBg: 'rgba(8, 12, 28, 0.38)',
-    panelBorder: 'rgba(61, 83, 130, 0.45)',
-    buttonBg: 'rgba(12, 20, 42, 0.78)',
-    buttonBorder: '#2f4670',
-    buttonText: '#d8e6ff',
+    divider: '#1a2240',
+    panelBg: 'rgba(0, 0, 8, 0.85)',
+    panelBorder: 'rgba(0, 229, 255, 0.2)',
+    buttonBg: 'rgba(0, 0, 15, 0.9)',
+    buttonBorder: 'rgba(0, 229, 255, 0.3)',
+    buttonText: '#e0f0ff',
   },
   light: {
     text: '#2f3f63',
