@@ -10,6 +10,9 @@ import {
 } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { City } from './City';
+import { StarField } from './StarField';
+import { Nebulae } from './Nebulae';
+import { DustParticles } from './DustParticles';
 import { useViewStore } from '../stores/view.store';
 import {
   COSMIC_PALETTE,
@@ -76,6 +79,13 @@ export function Scene(): React.JSX.Element {
       gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
     >
       {isDark && <fogExp2 attach="fog" args={[SCENE_FOG.color, SCENE_FOG.density]} />}
+      {isDark && (
+        <>
+          <StarField />
+          <Nebulae />
+          <DustParticles />
+        </>
+      )}
       <ambientLight
         intensity={sceneTheme.ambientIntensity}
         color={isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
