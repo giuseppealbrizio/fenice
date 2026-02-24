@@ -10,7 +10,8 @@ export interface FileIndexEntry {
   lineCount: number;
 }
 
-const EXPORT_REGEX = /^export\s+(?:const|function|class|type|interface|enum|default)\s+(\w+)/gm;
+const EXPORT_REGEX =
+  /^export\s+(?:async\s+)?(?:const|let|function|class|type|interface|enum)\s+(\w+)|^export\s+default\s+(?:async\s+)?(?:class|function)\s+(\w+)|^export\s+default\s+(\w+)/gm;
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git']);
 
@@ -47,7 +48,9 @@ async function scanDirectory(dirPath: string, projectRoot: string): Promise<File
       try {
         const content = await readFile(fullPath, 'utf-8');
         const exports = extractExports(content);
-        const lineCount = content.split('\n').filter((l) => l.length > 0).length;
+        const lines = content.split('\n');
+        // Don't count trailing empty string from a final newline
+        const lineCount = lines.at(-1) === '' ? lines.length - 1 : lines.length;
 
         entries.push({
           path: relative(projectRoot, fullPath),
@@ -74,8 +77,9 @@ function extractExports(content: string): string[] {
   EXPORT_REGEX.lastIndex = 0;
 
   while ((match = EXPORT_REGEX.exec(content)) !== null) {
-    if (match[1]) {
-      exports.push(match[1]);
+    const name = match[1] ?? match[2] ?? match[3];
+    if (name) {
+      exports.push(name);
     }
   }
 

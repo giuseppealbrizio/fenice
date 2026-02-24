@@ -167,6 +167,7 @@ describe('buildFileIndex', () => {
     const fileContent = [
       'export const MY_CONST = "value";',
       'export function myFunction() {}',
+      'export async function myAsyncFunction() {}',
       'export class MyClass {}',
       'export type MyType = string;',
       'export interface MyInterface {}',
@@ -182,6 +183,7 @@ describe('buildFileIndex', () => {
     expect(entries[0]?.exports).toEqual([
       'MY_CONST',
       'myFunction',
+      'myAsyncFunction',
       'MyClass',
       'MyType',
       'MyInterface',

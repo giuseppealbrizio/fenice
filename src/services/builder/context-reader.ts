@@ -217,7 +217,15 @@ export async function buildDynamicContext(
       break;
     }
 
-    const content = await safeReadFile(join(projectRoot, filePath));
+    // Validate path stays within project root (contextFiles comes from LLM output)
+    const resolved = join(projectRoot, filePath);
+    if (!resolved.startsWith(projectRoot) || filePath.includes('..')) {
+      logger.warn({ filePath }, 'Context file path escapes project root, skipping');
+      result.push({ path: filePath, content: '' });
+      continue;
+    }
+
+    const content = await safeReadFile(resolved);
     if (!content) {
       // Include empty entry so caller knows the file was attempted but missing
       result.push({ path: filePath, content: '' });
