@@ -22,7 +22,7 @@ FENICE (Italian for "phoenix") is a backend starter platform built on the **2026
 - **MCP Server Endpoint** -- Model Context Protocol discovery for AI agent integration
 - **Scalar Interactive Docs** -- Beautiful API documentation UI at `/docs`
 - **LLM-Readable Docs** -- Markdown API reference optimized for AI consumption at `/docs/llm`
-- **FENICE 3D World (M1)** -- React + R3F static city generated from live OpenAPI
+- **FENICE 3D World (M1-M3.1)** -- React + R3F city with real-time deltas, Tron visual language, AI builder UI
 - **OpenTelemetry** -- Auto-instrumented distributed tracing
 - **Pino Structured Logging** -- JSON logging with request correlation
 - **Adapter Pattern** -- Vendor-independent abstractions for email (Resend), storage (GCS), messaging (FCM)
@@ -53,22 +53,37 @@ See [QUICKSTART.md](QUICKSTART.md) for a detailed walkthrough.
 
 ## API Endpoints
 
-| Method | Path                        | Auth | Description                       |
-| ------ | --------------------------- | ---- | --------------------------------- |
-| GET    | `/api/v1/health`            | No   | Liveness check                    |
-| GET    | `/api/v1/health/detailed`   | No   | Readiness check with dependencies |
-| POST   | `/api/v1/auth/signup`       | No   | Register a new user               |
-| POST   | `/api/v1/auth/login`        | No   | Authenticate user                 |
-| POST   | `/api/v1/auth/refresh`      | No   | Refresh access token              |
-| GET    | `/api/v1/users/me`          | Yes  | Get current user profile          |
-| GET    | `/api/v1/users/:id`         | Yes  | Get user by ID                    |
-| PATCH  | `/api/v1/users/:id`         | Yes  | Update user profile               |
-| DELETE | `/api/v1/users/:id`         | Yes  | Delete user (admin only)          |
-| GET    | `/api/v1/mcp`               | No   | MCP discovery manifest            |
-| GET    | `/api/v1/world-ws`          | Yes  | WebSocket world stream (3D client)|
-| GET    | `/openapi`                  | No   | OpenAPI 3.1 JSON specification    |
-| GET    | `/docs`                     | No   | Scalar interactive API docs       |
-| GET    | `/docs/llm`                 | No   | LLM-readable Markdown docs        |
+| Method | Path                              | Auth  | Description                         |
+| ------ | --------------------------------- | ----- | ----------------------------------- |
+| GET    | `/api/v1/health`                  | No    | Liveness check                      |
+| GET    | `/api/v1/health/detailed`         | No    | Readiness check with dependencies   |
+| POST   | `/api/v1/auth/signup`             | No    | Register a new user                 |
+| POST   | `/api/v1/auth/login`              | No    | Authenticate user                   |
+| POST   | `/api/v1/auth/refresh`            | No    | Refresh access token                |
+| POST   | `/api/v1/auth/logout`             | Yes   | Revoke token                        |
+| POST   | `/api/v1/auth/verify-email`       | No    | Verify email with token             |
+| POST   | `/api/v1/auth/request-password-reset` | No | Request password reset email        |
+| POST   | `/api/v1/auth/reset-password`     | No    | Reset password with token           |
+| GET    | `/api/v1/users`                   | Admin | List users (paginated, searchable)  |
+| GET    | `/api/v1/users/me`                | Yes   | Get current user profile            |
+| GET    | `/api/v1/users/:id`               | Yes   | Get user by ID                      |
+| PATCH  | `/api/v1/users/:id`               | Yes   | Update user profile                 |
+| DELETE | `/api/v1/users/:id`               | Admin | Delete user                         |
+| POST   | `/api/v1/upload/init`             | Yes   | Initiate chunked upload             |
+| POST   | `/api/v1/upload/:id/chunk`        | Yes   | Upload a chunk                      |
+| POST   | `/api/v1/upload/:id/complete`     | Yes   | Complete upload                     |
+| DELETE | `/api/v1/upload/:id`              | Yes   | Cancel upload                       |
+| POST   | `/api/v1/builder/generate`        | Admin | Start AI builder job                |
+| GET    | `/api/v1/builder/jobs/:id`        | Yes   | Get builder job status              |
+| GET    | `/api/v1/builder/jobs`            | Admin | List all builder jobs               |
+| POST   | `/api/v1/builder/jobs/:id/approve`| Admin | Approve builder plan                |
+| POST   | `/api/v1/builder/jobs/:id/reject` | Admin | Reject builder plan                 |
+| GET    | `/api/v1/mcp`                     | No    | MCP discovery manifest              |
+| WS     | `/api/v1/ws`                      | Yes   | Generic WebSocket messaging         |
+| WS     | `/api/v1/world-ws`                | Yes   | 3D world projection stream          |
+| GET    | `/openapi`                        | No    | OpenAPI 3.1 JSON specification      |
+| GET    | `/docs`                           | No    | Scalar interactive API docs         |
+| GET    | `/docs/llm`                       | No    | LLM-readable Markdown docs          |
 
 ## Architecture
 
@@ -97,22 +112,23 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture decis
 ```
 src/
   index.ts              # Hono app (routes, middleware, OpenAPI, Scalar)
-  server.ts             # Entry point (MongoDB connect, @hono/node-server)
+  server.ts             # Entry point (MongoDB connect, seed admin, @hono/node-server)
   instrumentation.ts    # OpenTelemetry auto-instrumentation
   config/env.ts         # Zod-validated environment variables
   schemas/              # Zod schemas (SSoT for types + validation + OpenAPI)
-  models/               # Mongoose models
-  services/             # Business logic layer
-  routes/               # OpenAPI route definitions
-  middleware/            # Auth, error handling, logging, request ID
+  models/               # Mongoose models (User, BuilderJob)
+  services/             # Business logic (auth, user, upload, projection, builder)
+  routes/               # OpenAPI route definitions (8 routers)
+  middleware/            # Auth, RBAC, rate-limiter, timeout, error handling, etc.
+  ws/                   # WebSocket handlers + managers (generic + world)
   adapters/             # Email, storage, messaging abstractions
-  utils/                # Errors, logger, LLM docs generator
+  utils/                # Errors, logger, crypto, pagination, query-builder, seed
 client/
-  src/                  # React + R3F 3D world client (M1)
+  src/                  # React + R3F 3D world client (M1-M3.1)
 docs/3d-world/          # 3D world plans, ADRs, boards, and execution docs
 tests/
-  unit/                 # Unit tests (schemas, config, errors, adapters)
-  integration/          # Integration tests (health, auth, docs, MCP)
+  unit/                 # Unit tests (schemas, middleware, services, routes, ws)
+  integration/          # Integration tests (health, auth, projection, world-ws)
   properties/           # fast-check property-based tests
 ```
 
@@ -125,6 +141,9 @@ npm run dev:typecheck    # tsc --noEmit --watch
 
 # Quality
 npm run lint             # ESLint
+npm run lint:fix         # ESLint with auto-fix
+npm run format           # Prettier format all
+npm run format:check     # Prettier check only
 npm run typecheck        # TypeScript type checking
 npm run validate         # lint + typecheck + test
 

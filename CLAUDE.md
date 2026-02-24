@@ -6,7 +6,7 @@
 
 - **Repository:** `https://github.com/formray/fenice`
 - **Organization:** Formray
-- **Version:** 0.1.0 (tagged `v0.1.0` on `main`)
+- **Version:** 0.3.0 (latest on `main`)
 - **License:** MIT
 - **Author:** Giuseppe Albrizio
 
@@ -90,7 +90,11 @@ npm run start          # Run compiled output (node dist/server.js)
 ```
 Client Request
   -> Hono Middleware (requestId, requestLogger)
-  -> Auth Middleware (JWT verification, applied to /api/v1/users/* only)
+  -> Security (secureHeaders, CORS, bodyLimit, timeout)
+  -> Rate Limiter (per-route windows)
+  -> API Version (extracts from URL path)
+  -> Auth Middleware (JWT verification, on protected routes)
+  -> RBAC (role check, on admin-only routes)
   -> OpenAPI Route Handler (Zod validation via @hono/zod-openapi)
   -> Service Layer (business logic)
   -> Mongoose Model (MongoDB operations)
@@ -101,19 +105,29 @@ Client Request
 ```
 src/
   index.ts              # Hono app setup, route mounting, OpenAPI/Scalar/LLM docs
-  server.ts             # Entry point: MongoDB connect, @hono/node-server
+  server.ts             # Entry point: MongoDB connect, seed admin, @hono/node-server
   instrumentation.ts    # OpenTelemetry NodeSDK (imported via --import flag)
-  config/env.ts         # Zod-validated environment variables
-  schemas/              # Zod schemas (single source of truth for types + validation + OpenAPI)
+  config/env.ts         # Zod-validated environment variables (76 vars)
+  schemas/
     common.schema.ts    # ErrorResponse, Pagination, SuccessResponse
     user.schema.ts      # User, UserCreate, UserUpdate, RoleEnum
-    auth.schema.ts      # Login, Signup, AuthTokens, AuthResponse
+    auth.schema.ts      # Login, Signup, AuthTokens, AuthResponse, PasswordReset, EmailVerify
+    builder.schema.ts   # BuilderJob, BuilderPlan, BuilderStatus (11 states)
+    upload.schema.ts    # UploadSession, UploadChunk
+    world.schema.ts     # WorldService, WorldEndpoint, WorldEdge, WorldModel
+    world-delta.schema.ts # WorldDeltaEvent discriminated union (9 event types)
+    world-ws.schema.ts  # World WS protocol (subscribe, snapshot, delta, ping/pong, error)
+    ws.schema.ts        # Generic WS message types
   models/
     user.model.ts       # Mongoose schema + bcrypt pre-save hook + comparePassword
+    builder-job.model.ts # Builder job model with plan sub-schema + 11 status states
   services/
-    auth.service.ts     # Signup, login, refresh (JWT generation)
-    user.service.ts     # CRUD operations
-    builder.service.ts  # AI Builder orchestrator (prompt-to-PR pipeline)
+    auth.service.ts     # Signup, login, refresh, verify-email, password reset
+    user.service.ts     # CRUD + pagination + search/filter
+    upload.service.ts   # Chunked file upload (init, chunk, complete, cancel)
+    projection.service.ts # OpenAPI 3.x to WorldModel transformation
+    mock-delta-producer.ts # Mock event generation for dev/testing
+    builder.service.ts  # AI Builder orchestrator (two-phase prompt-to-PR pipeline)
     builder/
       context-reader.ts   # Reads codebase as LLM context bundle
       code-generator.ts   # Claude API tool-use loop (generate + repair)
@@ -125,25 +139,43 @@ src/
       validator.ts        # Runs typecheck/lint/test via child_process
       world-notifier.ts   # Emits builder progress + synthetic deltas via WebSocket
   routes/
-    health.routes.ts    # GET /health, /health/detailed (liveness + readiness)
-    auth.routes.ts      # POST /auth/signup, /login, /refresh
-    user.routes.ts      # GET /users/me, /users/:id, PATCH /users/:id, DELETE /users/:id
-    builder.routes.ts   # POST /builder/generate, GET /builder/jobs/:id, GET /builder/jobs
+    health.routes.ts    # GET /health, /health/detailed
+    auth.routes.ts      # POST signup, login, refresh, logout, verify-email, password-reset
+    user.routes.ts      # GET list, me, :id; PATCH :id; DELETE :id
+    upload.routes.ts    # POST init, chunk, complete; DELETE cancel
+    builder.routes.ts   # POST generate, approve, reject; GET job, list-jobs
     mcp.routes.ts       # GET /mcp (AI agent discovery)
+    ws.routes.ts        # WS /ws (generic WebSocket messaging)
+    world-ws.routes.ts  # WS /world-ws (3D world projection stream)
   middleware/
     auth.ts             # JWT Bearer token verification
+    rbac.ts             # Role-based access control (6-level hierarchy)
+    rate-limiter.ts     # Request throttling with configurable windows
+    timeout.ts          # Request timeout middleware
+    validate.ts         # Generic Zod request validation
+    api-version.ts      # API versioning (extracts from URL path)
     errorHandler.ts     # Centralized error handling (AppError, ZodError)
     requestId.ts        # UUID per request
     requestLogger.ts    # Pino structured request logging
+  ws/
+    auth.ts             # WebSocket JWT authentication
+    handlers.ts         # Generic WS message handlers
+    manager.ts          # WsManager (connections, rooms, broadcast)
+    world-handlers.ts   # World WS subscribe/resume/ping handlers
+    world-manager.ts    # WorldWsManager (ring buffer, resume tokens, seq numbering)
   adapters/
     index.ts            # Adapter factory + type re-exports
     email/              # EmailAdapter interface + ConsoleEmailAdapter + ResendAdapter
     storage/            # StorageAdapter interface + LocalStorageAdapter + GCSAdapter
     messaging/          # MessagingAdapter interface + ConsoleMessagingAdapter + FCMAdapter
   utils/
-    errors.ts           # AppError, NotFoundError, NotAuthorizedError, ForbiddenError, ValidationError
-    logger.ts           # Pino logger factory
+    errors.ts           # AppError, NotFoundError, NotAuthorizedError, ForbiddenError, etc.
+    logger.ts           # Pino logger factory with sensitive key redaction
     llm-docs.ts         # OpenAPI-to-Markdown generator for /docs/llm
+    crypto.ts           # Token generation + SHA-256 hashing
+    pagination.ts       # Cursor-based pagination with Base64 cursors
+    query-builder.ts    # User search/filter query builder
+    seed.ts             # Seed admin user on server start
 ```
 
 ### Zod as Single Source of Truth
@@ -193,7 +225,7 @@ POST /api/v1/builder/generate  (JWT + admin + rate limit 5/hour)
 - **Property testing:** fast-check for schema validation properties
 - **Coverage:** v8 provider, thresholds at 60/40/50/60 (stmts/branches/funcs/lines). DB-dependent files (services, models, production adapters) excluded — need MongoDB integration tests.
 - **Test structure:** `tests/unit/`, `tests/integration/`, `tests/properties/`
-- **Current status:** 719 tests across 73 test files (560 server + 159 client), all passing
+- **Current status:** 560 server tests across 61 test files + 159 client tests across 12 test files, all passing
 - **TDD preferred:** Write tests alongside or before implementation
 
 ## Common Gotchas
@@ -240,6 +272,39 @@ Optional (with defaults):
 - `LOG_LEVEL` — `error` | `warn` | `info` | `debug` (default: `info`)
 - `SERVICE_NAME` — Service identifier for logging/tracing (default: `fenice`)
 - `CLIENT_URL` — CORS origin URL
+
+Rate limiting:
+- `RATE_LIMIT_WINDOW_MS` — Global rate limit window (default: `60000` / 1 min)
+- `RATE_LIMIT_MAX_REQUESTS` — Max requests per window (default: `100`)
+
+Upload:
+- `UPLOAD_MAX_SIZE_BYTES` — Max upload size (default: `104857600` / 100MB)
+- `UPLOAD_CHUNK_SIZE_BYTES` — Chunk size (default: `5242880` / 5MB)
+- `UPLOAD_SESSION_TIMEOUT_MS` — Session timeout (default: `3600000` / 1 hour)
+- `UPLOAD_MAX_CONCURRENT` — Max concurrent uploads (default: `3`)
+
+WebSocket:
+- `WS_HEARTBEAT_INTERVAL_MS` — Heartbeat interval (default: `30000`)
+- `WS_HEARTBEAT_TIMEOUT_MS` — Heartbeat timeout (default: `10000`)
+- `WS_MESSAGE_RATE_LIMIT` — Messages per minute (default: `60`)
+
+Security:
+- `LOCKOUT_THRESHOLD` — Failed logins before lockout (default: `5`)
+- `LOCKOUT_DURATION_MS` — Lockout duration (default: `900000` / 15 min)
+- `REQUEST_TIMEOUT_MS` — Request timeout (default: `30000`)
+- `BODY_SIZE_LIMIT_BYTES` — Max body size (default: `1048576` / 1MB)
+
+World WS:
+- `WORLD_WS_BUFFER_SIZE` — Ring buffer size (default: `1000`)
+- `WORLD_WS_RESUME_TTL_MS` — Resume token TTL (default: `300000` / 5 min)
+
+Delta producer:
+- `DELTA_METRICS_INTERVAL_MS` — Metrics emit interval (default: `5000`)
+- `DELTA_DIFF_INTERVAL_MS` — Diff emit interval (default: `30000`)
+
+Seed:
+- `SEED_ADMIN_EMAIL` — Admin seed email (default: `admin@formray.io`)
+- `SEED_ADMIN_PASSWORD` — Admin seed password (default: `change-me-in-production`)
 
 Production adapters (optional):
 - `RESEND_API_KEY` — Resend email service API key

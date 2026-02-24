@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Context reduction for plan-constrained generation (~40-50% fewer tokens)
 - 10-minute timeout guard on both planning and generation phases
 - Plan field added to BuilderJob model and schema (Mongoose sub-schema + Zod)
-- 719 total tests (560 server + 159 client) across 73 test files
+- 560 server tests across 61 test files + 159 client tests across 12 test files
 
 - World model Zod schemas (WorldService, WorldEndpoint, WorldEdge, WorldModel) with schema version 1
 - ProjectionService for OpenAPI 3.x to WorldModel transformation (tag grouping, pairwise edges, auth detection)

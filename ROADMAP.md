@@ -17,22 +17,37 @@ The foundation is in place. FENICE provides a fully functional, production-ready
 - Four-script development workflow
 - Comprehensive documentation
 
-## v0.2.0 — Advanced Backend Features
+## v0.2.0 — Advanced Backend Features ✅
 
-Planned enhancements to expand platform capabilities:
+All v0.2.0 features are implemented:
 
-- **WebSocket Support** — Real-time communication via Hono WebSocket adapter
+- **WebSocket Support** — Real-time communication via Hono WebSocket adapter + rooms + broadcast
 - **Rate Limiting** — Request throttling with configurable windows per endpoint
-- **RBAC Middleware** — Role-based access control beyond the current admin-only delete check
-- **File Upload** — Multipart upload handling with storage adapter integration
-- **Pagination** — Cursor-based pagination for list endpoints (PaginationSchema already defined)
-- **Search & Filtering** — Query parameter support for user listing
+- **RBAC Middleware** — Role-based access control with 6-level hierarchy
+- **File Upload** — Chunked upload system (init, chunk, complete, cancel)
+- **Pagination** — Cursor-based pagination with Base64-encoded cursors
+- **Search & Filtering** — Query parameter support for user listing (email, username, role, date range)
 - **Email Verification** — Account verification flow using the email adapter
-- **Password Reset** — Reset flow using the existing resetPasswordToken fields
-- **Request Validation Middleware** — Generic middleware for body/query/params validation
-- **API Versioning Strategy** — Header or path-based versioning beyond `/api/v1`
+- **Password Reset** — Reset flow with token generation and SHA-256 hashing
+- **Request Validation Middleware** — Generic Zod validation middleware
+- **API Versioning Strategy** — Path-based versioning via middleware
 
-## v0.3.0 — Scale & Optimize
+## v0.3.0 — Security & Production Adapters ✅
+
+Security hardening and production-ready external service integrations:
+
+- **Security Headers** — via `hono/secure-headers` (X-Content-Type-Options, X-Frame-Options, etc.)
+- **CORS** — Configurable via `CLIENT_URL` environment variable
+- **Request Timeout** — Configurable `REQUEST_TIMEOUT_MS` middleware
+- **Body Size Limit** — Configurable `BODY_SIZE_LIMIT_BYTES` middleware
+- **Account Lockout** — Configurable failed login threshold + lockout duration
+- **Logout Endpoint** — `POST /auth/logout` with token revocation
+- **Graceful Shutdown** — SIGTERM/SIGINT handler with Mongoose disconnect
+- **ResendEmailAdapter** — Production email via Resend SDK
+- **GcsStorageAdapter** — Production storage via Google Cloud Storage SDK
+- **FcmMessagingAdapter** — Production push notifications via Firebase Admin SDK
+
+## Next — Scale & Optimize
 
 Infrastructure and performance improvements for production scale:
 
