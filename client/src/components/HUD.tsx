@@ -257,11 +257,12 @@ export function HUD(): React.JSX.Element {
               marginBottom: '4px',
             }}
           >
-            Building Guide
+            Planet Guide
           </div>
-          <div>Body color = HTTP method</div>
-          <div>Base ring = endpoint link state</div>
-          <div>Height = parameter complexity</div>
+          <div>Shape = HTTP method</div>
+          <div>Color = HTTP method</div>
+          <div>Size = parameter complexity</div>
+          <div>Glow = endpoint link state</div>
         </div>
 
         {/* Corridors legend */}
@@ -276,12 +277,12 @@ export function HUD(): React.JSX.Element {
           }}
         >
           <div style={{ textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-            Corridors
+            Routes
           </div>
-          <div>Radial roads from auth gate to protected services</div>
-          <div>Road color = worst link state of service endpoints</div>
-          <div>Flow markers = data flowing through the gate</div>
-          <div>Gate closed = all corridors blocked (red)</div>
+          <div>Curved routes connect service stars</div>
+          <div>Route color = link state of connected endpoints</div>
+          <div>Pulse = data flowing between services</div>
+          <div>Wormhole closed = routes dimmed</div>
         </div>
 
         {/* Routing hint legend */}
