@@ -36,4 +36,21 @@ describe('useViewStore', () => {
     useViewStore.getState().setRouteLayerMode('both');
     expect(useViewStore.getState().routeLayerMode).toBe('both');
   });
+
+  describe('focusTarget', () => {
+    it('defaults to null', () => {
+      expect(useViewStore.getState().focusTarget).toBeNull();
+    });
+
+    it('setFocusTarget updates state', () => {
+      useViewStore.getState().setFocusTarget([10, 5, 10]);
+      expect(useViewStore.getState().focusTarget).toEqual([10, 5, 10]);
+    });
+
+    it('setFocusTarget(null) clears target', () => {
+      useViewStore.getState().setFocusTarget([10, 5, 10]);
+      useViewStore.getState().setFocusTarget(null);
+      expect(useViewStore.getState().focusTarget).toBeNull();
+    });
+  });
 });
