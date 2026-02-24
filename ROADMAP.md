@@ -62,6 +62,7 @@ The AI-native 3D city experience (React Three Fiber, AI builder, city metaphor).
 | M2D | Done | Visual clarity + KPI safety pass |
 | **M2** | **Closed** | **All sub-milestones complete, demo narrative shipped** |
 | **M3** | **Done** | **AI Builder: prompt-to-PR with safety gates, validation, self-repair, 3D world integration** |
+| **M3.1** | **Done** | **Two-phase builder: plan-then-generate with user approval, glowy UI, context reduction, timeouts** |
 | M4 | Next | Multi-user collaboration |
 
 Execution tracking: [docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md](docs/3d-world/FENICE_3D_World_Roadmap_v0.2.md).

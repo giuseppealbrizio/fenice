@@ -158,23 +158,32 @@ Vendor-independent abstractions for external services:
 - **Storage:** `StorageAdapter` interface with `LocalStorageAdapter` (dev) and `GCSAdapter` (prod)
 - **Messaging:** `MessagingAdapter` interface with `ConsoleMessagingAdapter` (dev) and `FCMAdapter` (prod)
 
-### AI Builder (M3)
-The builder pipeline generates production-ready API endpoints from natural language prompts:
+### AI Builder (M3 + M3.1)
+The builder pipeline generates production-ready API endpoints from natural language prompts using a two-phase approach:
 
 ```
 POST /api/v1/builder/generate  (JWT + admin + rate limit 5/hour)
+  Phase 1 — Planning:
   1. Read context (CLAUDE.md, schemas, models, services, routes)
-  2. Generate code via Claude API (tool-use loop: write_file, modify_file, read_file)
-  3. Scope policy validation (path whitelist/blacklist, content scanning)
-  4. Write files + create git branch (conventional commit + Co-Authored-By)
-  5. Validate (typecheck + lint + test)
-  6. Self-repair if validation fails (1 retry via Claude)
-  7. Push branch + create PR via Octokit
-  8. Emit synthetic deltas to 3D world via WebSocket
+  2. Generate plan via Claude API (single JSON call, no tools)
+  3. Return plan to user for review (status: plan_ready)
+
+  POST /api/v1/builder/jobs/:id/approve  (or /reject)
+  Phase 2 — Generation (after user approves plan):
+  4. Read context (slimmed for generation: ~40-50% fewer tokens)
+  5. Generate code via Claude API (tool-use loop: write_file, modify_file, read_file)
+  6. Scope policy validation (path whitelist/blacklist, content scanning)
+  7. Write files + create git branch (conventional commit + Co-Authored-By)
+  8. Validate (typecheck + lint + test)
+  9. Self-repair if validation fails (1 retry via Claude)
+  10. Push branch + create PR via Octokit
+  11. Emit synthetic deltas to 3D world via WebSocket
 ```
 
+- **Two-phase:** Plan approval gate between planning and generation (11 pipeline states)
 - **Safety:** Scope policy (ALLOWED_WRITE_PREFIXES, FORBIDDEN_PATHS, dangerous pattern scanning), PR-only (never merges)
 - **Kill switch:** `BUILDER_ENABLED=false` returns 503
+- **Timeouts:** 10-minute guard on both planning and generation phases
 - **World integration:** `builder.progress` delta events + synthetic `service.upserted`/`endpoint.upserted` deltas
 - **Deps:** `@anthropic-ai/sdk`, `simple-git`, `@octokit/rest`
 
@@ -184,7 +193,7 @@ POST /api/v1/builder/generate  (JWT + admin + rate limit 5/hour)
 - **Property testing:** fast-check for schema validation properties
 - **Coverage:** v8 provider, thresholds at 60/40/50/60 (stmts/branches/funcs/lines). DB-dependent files (services, models, production adapters) excluded — need MongoDB integration tests.
 - **Test structure:** `tests/unit/`, `tests/integration/`, `tests/properties/`
-- **Current status:** 536+ tests across 61 test files, all passing
+- **Current status:** 719 tests across 73 test files (560 server + 159 client), all passing
 - **TDD preferred:** Write tests alongside or before implementation
 
 ## Common Gotchas

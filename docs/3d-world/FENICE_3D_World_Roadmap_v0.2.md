@@ -1,9 +1,9 @@
 # FENICE 3D World
 ## Roadmap v0.2 (Execution)
 
-Date: 2026-02-23
+Date: 2026-02-24
 Owner: Shared (Giuseppe + Claude + Codex)
-Status: **M2 CLOSED**
+Status: **M3.1 DONE**
 
 ## 1) Current state
 
@@ -54,11 +54,22 @@ All items resolved:
    - Owner: Giuseppe + Claude
    - 5-minute walkthrough: city overview, visual language, corridors + auth gate, degraded path, route layers, forward vision.
 
-### P2 — Next
+### P2 — All closed
 
-1. `M3-T00` AI Builder pre-work
+1. `M3-T00` AI Builder pipeline — **DONE**
+   - Owner: Claude
+   - Prompt-to-PR with scope policy, self-repair, validation, 3D world integration. PR #75 merged.
+2. `M3.1-T00` Two-phase builder — **DONE**
+   - Owner: Claude
+   - Plan-then-generate pipeline with user approval gate. 15 tasks across 5 batches.
+   - Plan review UI, glowy loading bar, context reduction (~40-50% fewer tokens), 10-min timeouts.
+   - Approve/reject endpoints, plan field on job model, 719 total tests. PR #76 merged.
+
+### P3 — Next
+
+1. `M4-T00` Multi-user collaboration
    - Owner: Shared
-   - Output: prompt-to-PR boundaries and safety gates baseline
+   - Entry gate: M3 prompt→PR loop reliable and auditable. **ENTRY GATE MET.**
 
 ## 4) Role split (working mode)
 
@@ -77,9 +88,19 @@ All items resolved:
 4. KPI and perf guardrails pass. — **typecheck + lint + test clean, suite < 600ms.**
 5. Demo narrative reproducible end-to-end. — **DemoNarrative_5min.md updated.**
 
-## 6) Next milestones after M2
+## 6) M3/M3.1 done definition — ALL PASSED
 
-1. `M3` AI Builder PR-only
-   - Entry gate: M2 closed + stable semantic/visual contract. **ENTRY GATE MET.**
-2. `M4` Multi-user collaboration
-   - Entry gate: M3 prompt->PR loop reliable and auditable.
+1. Builder pipeline generates code from prompt. — **Claude API tool-use loop with write_file/modify_file/read_file.**
+2. Scope policy prevents unsafe writes. — **Path whitelist/blacklist, forbidden paths, content scanning.**
+3. Self-repair on validation failure. — **One retry via Claude, then fail.**
+4. PR created on GitHub. — **Octokit integration, structured PR body.**
+5. 3D world shows builder progress. — **builder.progress deltas + synthetic service/endpoint deltas.**
+6. Two-phase pipeline with plan approval. — **plan_ready state with approve/reject endpoints.**
+7. Plan review UI in 3D world. — **Editable manifest, type badges, approve/reject buttons.**
+8. Context reduction for faster generation. — **~40-50% fewer tokens when plan constrains scope.**
+9. All tests pass. — **719 tests (560 server + 159 client), 73 test files.**
+
+## 7) Next milestones
+
+1. `M4` Multi-user collaboration
+   - Entry gate: M3 prompt→PR loop reliable and auditable. **ENTRY GATE MET.**

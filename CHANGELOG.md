@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- AI Builder pipeline: prompt-to-PR code generation via Claude API with tool use
+- **M3 AI Builder pipeline**: prompt-to-PR code generation via Claude API with tool use
 - Builder routes: `POST /api/v1/builder/generate`, `GET /api/v1/builder/jobs/:id`, `GET /api/v1/builder/jobs`
-- Builder job model with MongoDB audit trail (status tracking across 8 pipeline states)
+- Builder job model with MongoDB audit trail (status tracking across 11 pipeline states)
 - Scope policy engine: path whitelist/blacklist, forbidden path detection, dangerous content scanning
 - Context reader: builds LLM context bundle from project codebase (CLAUDE.md, schemas, models, services, routes)
 - Code generator: multi-turn Claude API loop with write_file, modify_file, read_file tools
@@ -28,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Builder kill switch: `BUILDER_ENABLED=false` returns 503
 - JWT + admin RBAC + dedicated rate limit (5 req/hour) on builder endpoints
 - New dependencies: `@anthropic-ai/sdk`, `simple-git`, `@octokit/rest`
-- 75+ new unit and integration tests for builder subsystem (536 total tests, 61 files)
 - Builder Prompt Bar in 3D world client: collapsible panel for submitting prompts, real-time status via WebSocket
 - Client-side builder types, Zustand store, and REST API client (`builder-api.ts`)
 - Preview/Live (dry-run) toggle in prompt bar with explanation text
@@ -36,7 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `builder.progress` delta event forwarding from world store to builder store
 - Seed admin user (`admin@formray.io`) created automatically on every server start
 - `detail` field on `builder.progress` delta events for granular tool activity reporting
-- 17 new builder store unit tests (154 total client tests)
+- **M3.1 Two-Phase Builder**: plan-then-generate pipeline with user approval gate
+- Two-phase pipeline: `queued → planning → plan_ready → [approve/reject] → reading_context → generating → ... → completed`
+- Plan generation via single Claude API call returning structured file manifest (path, type, action, description)
+- `POST /api/v1/builder/jobs/:id/approve` and `POST /api/v1/builder/jobs/:id/reject` endpoints (admin-only)
+- Plan review UI in BuilderPromptBar: editable file manifest with type badges, inline description editing, approve/reject buttons
+- Glowy animated loading bar with CSS keyframe animations (shimmer, glow, pulse, indeterminate)
+- Context reduction for plan-constrained generation (~40-50% fewer tokens)
+- 10-minute timeout guard on both planning and generation phases
+- Plan field added to BuilderJob model and schema (Mongoose sub-schema + Zod)
+- 719 total tests (560 server + 159 client) across 73 test files
 
 - World model Zod schemas (WorldService, WorldEndpoint, WorldEdge, WorldModel) with schema version 1
 - ProjectionService for OpenAPI 3.x to WorldModel transformation (tag grouping, pairwise edges, auth detection)
