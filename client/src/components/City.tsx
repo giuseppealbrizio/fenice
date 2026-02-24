@@ -9,6 +9,7 @@ import { RingRoads } from './RingRoads';
 import { Boulevards } from './Boulevards';
 import { ServiceCorridors } from './ServiceCorridors';
 import { useViewStore } from '../stores/view.store';
+import { METHOD_COLORS } from '../utils/colors';
 
 export function City(): React.JSX.Element | null {
   const services = useWorldStore((s) => s.services);
@@ -32,6 +33,22 @@ export function City(): React.JSX.Element | null {
       {layout.districts.map((d) => (
         <District key={d.serviceId} layout={d} />
       ))}
+      {/* Per-district point lights for colored ambient glow */}
+      {layout.districts.map((d) => {
+        const serviceEndpoints = endpoints.filter((e) => e.serviceId === d.serviceId);
+        const dominantMethod = serviceEndpoints[0]?.method ?? 'get';
+        const lightColor = METHOD_COLORS[dominantMethod];
+        return (
+          <pointLight
+            key={`light-${d.serviceId}`}
+            position={[d.center.x, 4, d.center.z]}
+            color={lightColor}
+            intensity={0.5}
+            distance={15}
+            decay={2}
+          />
+        );
+      })}
       {layout.buildings.map((b) => {
         const endpoint = endpointMap.get(b.endpointId);
         if (!endpoint) return null;
