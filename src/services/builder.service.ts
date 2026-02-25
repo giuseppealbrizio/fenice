@@ -4,7 +4,11 @@ import type { BuilderOptions, BuilderJobStatus, BuilderPlan } from '../schemas/b
 import type { PaginatedResponse } from '../schemas/common.schema.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
 import { decodeCursor, encodeCursor } from '../utils/pagination.js';
-import { buildContextBundle } from './builder/context-reader.js';
+import {
+  buildContextBundle,
+  buildDynamicContext,
+  formatDynamicContext,
+} from './builder/context-reader.js';
 import { generateCode, repairCode, generatePlan } from './builder/code-generator.js';
 import { buildFileIndex, formatFileIndex } from './builder/file-indexer.js';
 import { validateGeneratedFiles } from './builder/scope-policy.js';
@@ -227,7 +231,20 @@ export class BuilderService {
       // Step 1: Read context (status already set to reading_context by approve())
       const projectRoot = this.getProjectRoot();
       const context = await buildContextBundle(projectRoot);
-      logger.info({ jobId }, 'Context bundle built');
+
+      // Build dynamic context if plan specifies contextFiles
+      const planContextFiles = plan.contextFiles ?? [];
+      let preformattedContext: string | undefined;
+      if (planContextFiles.length > 0) {
+        const dynamicBundle = await buildDynamicContext(projectRoot, planContextFiles);
+        preformattedContext = formatDynamicContext(dynamicBundle);
+        logger.info(
+          { jobId, contextFileCount: planContextFiles.length },
+          'Dynamic context built from plan'
+        );
+      } else {
+        logger.info({ jobId }, 'Context bundle built (static fallback)');
+      }
 
       // Step 2: Generate code via Claude API
       currentStep = 'generating';
@@ -242,7 +259,15 @@ export class BuilderService {
           }
         : undefined;
       const result = await withTimeout(
-        generateCode(prompt, context, projectRoot, apiKey, onToolActivity, plan),
+        generateCode(
+          prompt,
+          context,
+          projectRoot,
+          apiKey,
+          onToolActivity,
+          plan,
+          preformattedContext
+        ),
         PIPELINE_TIMEOUT_MS,
         'Code generation'
       );

@@ -323,11 +323,14 @@ export async function generateCode(
   projectRoot: string,
   apiKey: string,
   onToolActivity?: ToolActivityCallback,
-  plan?: BuilderPlan
+  plan?: BuilderPlan,
+  preformattedContext?: string
 ): Promise<GenerationResult> {
   const client = new Anthropic({ apiKey });
 
-  const contextText = plan ? formatContextForGeneration(context) : formatContextForPrompt(context);
+  const contextText =
+    preformattedContext ??
+    (plan ? formatContextForGeneration(context) : formatContextForPrompt(context));
   const planConstraint = plan ? buildPlanConstraint(plan) : '';
   const userMessage = `${contextText}\n\n${planConstraint}## User Request\n\n${prompt}\n\nGenerate all necessary files using the tools provided. Create complete, production-ready code following the project conventions shown above.`;
 
