@@ -8,6 +8,7 @@ import {
   BUILDER_PLAN_PROMPT,
   BUILDER_TOOLS,
   buildPlanConstraint,
+  buildPlanPrompt,
   buildSystemPrompt,
 } from './prompt-templates.js';
 import {
@@ -257,11 +258,13 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
 export async function generatePlan(
   prompt: string,
   context: ContextBundle,
-  apiKey: string
+  apiKey: string,
+  fileIndex?: string
 ): Promise<PlanResult> {
   const client = new Anthropic({ apiKey });
 
   const contextText = formatContextForPrompt(context);
+  const planPrompt = fileIndex ? buildPlanPrompt(fileIndex) : BUILDER_PLAN_PROMPT;
   const userMessage = `${contextText}\n\n## User Request\n\n${prompt}`;
 
   let response: Anthropic.Message;
@@ -269,7 +272,7 @@ export async function generatePlan(
     response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: BUILDER_PLAN_PROMPT,
+      system: planPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
   } catch (err: unknown) {

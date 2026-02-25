@@ -6,6 +6,7 @@ import { NotFoundError, AppError } from '../utils/errors.js';
 import { decodeCursor, encodeCursor } from '../utils/pagination.js';
 import { buildContextBundle } from './builder/context-reader.js';
 import { generateCode, repairCode, generatePlan } from './builder/code-generator.js';
+import { buildFileIndex, formatFileIndex } from './builder/file-indexer.js';
 import { validateGeneratedFiles } from './builder/scope-policy.js';
 import { writeGeneratedFiles } from './builder/file-writer.js';
 import {
@@ -190,8 +191,11 @@ export class BuilderService {
       const context = await buildContextBundle(projectRoot);
       const apiKey = this.getApiKey();
 
+      const fileIndex = await buildFileIndex(projectRoot);
+      const formattedIndex = formatFileIndex(fileIndex);
+
       const { plan } = await withTimeout(
-        generatePlan(prompt, context, apiKey),
+        generatePlan(prompt, context, apiKey, formattedIndex),
         PIPELINE_TIMEOUT_MS,
         'Planning'
       );
