@@ -13,7 +13,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   default: MockAnthropic,
 }));
 
-// Mock fs for read_file tool
+// Mock fs for read_file tool + in-loop validation (writeFilesToDisk / cleanupFiles)
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn().mockImplementation(async (path: string) => {
     if (path === '/project/src/index.ts') {
@@ -21,7 +21,36 @@ vi.mock('node:fs/promises', () => ({
     }
     throw new Error('File not found');
   }),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  unlink: vi.fn().mockResolvedValue(undefined),
 }));
+
+// Mock child_process for in-loop validation (runValidationSteps)
+type ExecFileCallback = (err: Error | null, stdout: string, stderr: string) => void;
+vi.mock('node:child_process', () => ({
+  execFile: vi.fn((_cmd: string, _args: string[], _opts: unknown, cb: ExecFileCallback) => {
+    cb(null, '', '');
+  }),
+}));
+
+// Mock node:util promisify to work with our mock
+vi.mock('node:util', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:util')>();
+  return {
+    ...actual,
+    promisify: (fn: (...args: unknown[]) => void) => {
+      return async (...args: unknown[]) => {
+        return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+          fn(...args, (err: Error | null, stdout: string, stderr: string) => {
+            if (err) reject(err);
+            else resolve({ stdout, stderr });
+          });
+        });
+      };
+    },
+  };
+});
 
 const { generateCode, generatePlan, repairCode } =
   await import('../../../../src/services/builder/code-generator.js');

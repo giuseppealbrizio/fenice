@@ -14,13 +14,14 @@ import { buildFileIndex, formatFileIndex } from './builder/file-indexer.js';
 import { validateGeneratedFiles } from './builder/scope-policy.js';
 import { writeGeneratedFiles } from './builder/file-writer.js';
 import {
-  createBranchAndCommit,
-  createDraftBranchAndCommit,
   amendCommitWithFiles,
-  pushBranch,
-  cleanupBranch,
   detectGitHubRemote,
   detectGitHubToken,
+  createWorktree,
+  createDraftWorktree,
+  commitInWorktree,
+  pushFromWorktree,
+  removeWorktree,
 } from './builder/git-ops.js';
 import { createPullRequest } from './builder/github-pr.js';
 import { validateProject, formatValidationErrors } from './builder/validator.js';
@@ -353,140 +354,152 @@ export class BuilderService {
         return;
       }
 
-      // Step 3: Write files to disk + create git branch
+      // Step 3: Create worktree + write files
+      // Uses a git worktree so all file/git ops happen in an isolated directory.
+      // This prevents tsx watch from restarting when the builder modifies files.
       currentStep = 'writing_files';
       await this.updateStatus(jobId, currentStep);
       this.notifier?.emitProgress(jobId, currentStep);
-      const writtenPaths = await writeGeneratedFiles(projectRoot, result.files);
-      const { branch } = await createBranchAndCommit(projectRoot, jobId, prompt, writtenPaths);
-      logger.info({ jobId, branch, fileCount: writtenPaths.length }, 'Files written and committed');
+      const worktree = await createWorktree(projectRoot, jobId, prompt);
+      const wtPath = worktree.worktreePath;
+      const branch = worktree.branch;
 
-      // Step 4: Validate (lint + typecheck + test)
-      currentStep = 'validating';
-      await this.updateStatus(jobId, currentStep);
-      this.notifier?.emitProgress(jobId, currentStep);
-      let currentFiles = result.files;
-      let validation = await validateProject(projectRoot);
-
-      // Level 1: Repair (up to 2 attempts)
-      const MAX_REPAIR_ATTEMPTS = 2;
-      for (let attempt = 1; attempt <= MAX_REPAIR_ATTEMPTS && !validation.passed; attempt++) {
-        logger.warn({ jobId, attempt }, 'Validation failed, attempting repair');
-        const errorSummary = formatValidationErrors(validation);
-        const repairResult = await withTimeout(
-          repairCode(currentFiles, errorSummary, projectRoot, apiKey),
-          PIPELINE_TIMEOUT_MS,
-          'Repair'
+      try {
+        const writtenPaths = await writeGeneratedFiles(wtPath, result.files);
+        await commitInWorktree(wtPath, jobId, prompt, writtenPaths);
+        logger.info(
+          { jobId, branch, fileCount: writtenPaths.length },
+          'Files written and committed in worktree'
         );
 
-        if (repairResult.violations.length > 0) {
-          logger.error(
-            { jobId, violations: repairResult.violations },
-            'Repair had scope violations'
+        // Step 4: Validate (lint + typecheck + test) in the worktree
+        currentStep = 'validating';
+        await this.updateStatus(jobId, currentStep);
+        this.notifier?.emitProgress(jobId, currentStep);
+        let currentFiles = result.files;
+        let validation = await validateProject(wtPath);
+
+        // Level 1: Repair (up to 2 attempts)
+        const MAX_REPAIR_ATTEMPTS = 2;
+        for (let attempt = 1; attempt <= MAX_REPAIR_ATTEMPTS && !validation.passed; attempt++) {
+          logger.warn({ jobId, attempt }, 'Validation failed, attempting repair');
+          const errorSummary = formatValidationErrors(validation);
+          const repairResult = await withTimeout(
+            repairCode(currentFiles, errorSummary, wtPath, apiKey),
+            PIPELINE_TIMEOUT_MS,
+            'Repair'
           );
-          break; // Don't count violation repairs, fall through to draft
+
+          if (repairResult.violations.length > 0) {
+            logger.error(
+              { jobId, violations: repairResult.violations },
+              'Repair had scope violations'
+            );
+            break;
+          }
+
+          await writeGeneratedFiles(wtPath, repairResult.files);
+          const repairedPaths = repairResult.files.map((f) => f.path);
+          await amendCommitWithFiles(wtPath, repairedPaths);
+
+          // Merge repair files into originals instead of replacing
+          const repairedMap = new Map(repairResult.files.map((f) => [f.path, f]));
+          currentFiles = currentFiles.map((f) => repairedMap.get(f.path) ?? f);
+          for (const f of repairResult.files) {
+            if (!currentFiles.some((cf) => cf.path === f.path)) {
+              currentFiles.push(f);
+            }
+          }
+          totalTokens.input += repairResult.tokenUsage.inputTokens;
+          totalTokens.output += repairResult.tokenUsage.outputTokens;
+
+          validation = await validateProject(wtPath);
+          if (validation.passed) {
+            logger.info({ jobId, attempt }, 'Repair succeeded');
+          }
         }
 
-        await writeGeneratedFiles(projectRoot, repairResult.files);
-        // Amend the branch commit so it reflects the repaired state.
-        // Without this, pushBranch would push the original broken code,
-        // and cleanupBranch would fail on uncommitted changes.
-        const repairedPaths = repairResult.files.map((f) => f.path);
-        await amendCommitWithFiles(projectRoot, repairedPaths);
-        currentFiles = repairResult.files;
-        totalTokens.input += repairResult.tokenUsage.inputTokens;
-        totalTokens.output += repairResult.tokenUsage.outputTokens;
+        if (!validation.passed) {
+          // Level 2: Draft PR (still useful code, needs manual fixes)
+          logger.warn({ jobId }, 'Repair exhausted, creating draft PR');
 
-        validation = await validateProject(projectRoot);
-        if (validation.passed) {
-          logger.info({ jobId, attempt }, 'Repair succeeded');
+          // Remove the builder worktree and create a draft one
+          await removeWorktree(projectRoot, wtPath, branch);
+          const draftWt = await createDraftWorktree(projectRoot, jobId, prompt);
+
+          try {
+            const draftPaths = await writeGeneratedFiles(draftWt.worktreePath, currentFiles);
+            await commitInWorktree(draftWt.worktreePath, jobId, prompt, draftPaths, true);
+            const github = await this.getGitHubConfig();
+            await pushFromWorktree(draftWt.worktreePath, draftWt.branch);
+
+            const pr = await createPullRequest(
+              draftWt.branch,
+              prompt,
+              currentFiles,
+              jobId,
+              false,
+              github.token,
+              github.owner,
+              github.repo
+            );
+
+            await this.updateStatus(jobId, 'completed_draft', {
+              result: {
+                files: currentFiles,
+                prUrl: pr.prUrl,
+                prNumber: pr.prNumber,
+                branch: draftWt.branch,
+                validationPassed: false,
+                validationErrors: validation.errors
+                  .filter((e) => !e.passed)
+                  .map((e) => `${e.step}: ${e.output.slice(0, 500)}`),
+                tokenUsage: { inputTokens: totalTokens.input, outputTokens: totalTokens.output },
+              },
+            });
+            this.notifier?.emitSyntheticDeltas(jobId, currentFiles);
+            this.notifier?.emitProgress(jobId, 'completed_draft');
+          } finally {
+            await removeWorktree(projectRoot, draftWt.worktreePath, draftWt.branch);
+          }
+          return;
         }
-      }
 
-      if (!validation.passed) {
-        // Level 2: Draft PR (still useful code, needs manual fixes)
-        logger.warn({ jobId }, 'Repair exhausted, creating draft PR');
-
-        // Clean up the original builder branch before creating draft
-        await cleanupBranch(projectRoot, branch);
-
-        // Re-write the latest (potentially repaired) files and create draft branch
-        const draftPaths = await writeGeneratedFiles(projectRoot, currentFiles);
-        const { branch: draftBranch } = await createDraftBranchAndCommit(
-          projectRoot,
-          jobId,
-          prompt,
-          draftPaths
-        );
+        // Step 5: Push branch and create PR from worktree
+        currentStep = 'creating_pr';
+        await this.updateStatus(jobId, currentStep);
+        this.notifier?.emitProgress(jobId, currentStep);
         const github = await this.getGitHubConfig();
-        await pushBranch(projectRoot, draftBranch);
-
+        await pushFromWorktree(wtPath, branch);
         const pr = await createPullRequest(
-          draftBranch,
+          branch,
           prompt,
           currentFiles,
           jobId,
-          false,
+          true,
           github.token,
           github.owner,
           github.repo
         );
+        logger.info({ jobId, prUrl: pr.prUrl, prNumber: pr.prNumber }, 'PR created');
 
-        await cleanupBranch(projectRoot, draftBranch);
-
-        await this.updateStatus(jobId, 'completed_draft', {
+        await this.updateStatus(jobId, 'completed', {
           result: {
             files: currentFiles,
             prUrl: pr.prUrl,
             prNumber: pr.prNumber,
-            branch: draftBranch,
-            validationPassed: false,
-            validationErrors: validation.errors
-              .filter((e) => !e.passed)
-              .map((e) => `${e.step}: ${e.output.slice(0, 500)}`),
+            branch,
+            validationPassed: true,
             tokenUsage: { inputTokens: totalTokens.input, outputTokens: totalTokens.output },
           },
         });
+
         this.notifier?.emitSyntheticDeltas(jobId, currentFiles);
-        this.notifier?.emitProgress(jobId, 'completed_draft');
-        return;
+        this.notifier?.emitProgress(jobId, 'completed');
+      } finally {
+        // Always clean up the worktree — main checkout is never touched
+        await removeWorktree(projectRoot, wtPath, branch);
       }
-
-      // Step 5: Push branch and create PR
-      currentStep = 'creating_pr';
-      await this.updateStatus(jobId, currentStep);
-      this.notifier?.emitProgress(jobId, currentStep);
-      const github = await this.getGitHubConfig();
-      await pushBranch(projectRoot, branch);
-      const pr = await createPullRequest(
-        branch,
-        prompt,
-        currentFiles,
-        jobId,
-        true,
-        github.token,
-        github.owner,
-        github.repo
-      );
-      logger.info({ jobId, prUrl: pr.prUrl, prNumber: pr.prNumber }, 'PR created');
-
-      // Switch back to main after PR creation
-      await cleanupBranch(projectRoot, branch);
-
-      await this.updateStatus(jobId, 'completed', {
-        result: {
-          files: currentFiles,
-          prUrl: pr.prUrl,
-          prNumber: pr.prNumber,
-          branch,
-          validationPassed: true,
-          tokenUsage: { inputTokens: totalTokens.input, outputTokens: totalTokens.output },
-        },
-      });
-
-      // Emit synthetic deltas so the 3D world shows new buildings immediately
-      this.notifier?.emitSyntheticDeltas(jobId, currentFiles);
-      this.notifier?.emitProgress(jobId, 'completed');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       const code = err instanceof AppError ? err.code : 'PIPELINE_ERROR';

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { writeFile, mkdir, unlink } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import type { BuilderGeneratedFile, BuilderPlan } from '../../schemas/builder.schema.js';
 import { BuilderPlanSchema } from '../../schemas/builder.schema.js';
 import {
@@ -28,7 +29,8 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('fenice', process.env['LOG_LEVEL'] ?? 'info');
 
-const MAX_TURNS = 15;
+const MAX_TURNS = 25;
+const MAX_VALIDATION_ROUNDS = 3;
 
 export type ToolActivityCallback = (tool: string, path: string) => void;
 
@@ -36,12 +38,22 @@ export interface GenerationResult {
   files: BuilderGeneratedFile[];
   violations: ScopePolicyViolation[];
   tokenUsage: { inputTokens: number; outputTokens: number };
+  /** Whether the in-loop validation passed (undefined if no validator was provided) */
+  validationPassed?: boolean | undefined;
 }
 
 export interface PlanResult {
   plan: BuilderPlan;
   tokenUsage: { inputTokens: number; outputTokens: number };
 }
+
+/**
+ * Callback that writes files to disk, runs tsc + eslint, and returns errors.
+ * Returns null if validation passed, or a string with errors if it failed.
+ */
+type ValidateCallback = (
+  files: BuilderGeneratedFile[]
+) => Promise<{ passed: boolean; errors: string }>;
 
 interface ToolLoopConfig {
   client: Anthropic;
@@ -50,17 +62,39 @@ interface ToolLoopConfig {
   projectRoot: string;
   onToolActivity?: ToolActivityCallback | undefined;
   allowedPlanPaths?: Set<string> | undefined;
+  /** If provided, runs validation when Claude finishes and feeds errors back */
+  onValidate?: ValidateCallback | undefined;
+}
+
+/**
+ * Returns the latest version of each file (last write wins).
+ */
+function deduplicateFiles(files: BuilderGeneratedFile[]): BuilderGeneratedFile[] {
+  const map = new Map<string, BuilderGeneratedFile>();
+  for (const file of files) {
+    map.set(file.path, file);
+  }
+  return [...map.values()];
 }
 
 async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
-  const { client, systemPrompt, userMessage, projectRoot, onToolActivity, allowedPlanPaths } =
-    config;
+  const {
+    client,
+    systemPrompt,
+    userMessage,
+    projectRoot,
+    onToolActivity,
+    allowedPlanPaths,
+    onValidate,
+  } = config;
 
   const files: BuilderGeneratedFile[] = [];
   const violations: ScopePolicyViolation[] = [];
   const createdPaths = new Set<string>();
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+  let validationRounds = 0;
+  let validationPassed: boolean | undefined;
 
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMessage }];
 
@@ -107,6 +141,31 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
     }
 
     if (response.stop_reason === 'end_turn') {
+      // Compiler-in-the-loop: validate before exiting
+      if (onValidate && files.length > 0 && validationRounds < MAX_VALIDATION_ROUNDS) {
+        const dedupedFiles = deduplicateFiles(files);
+        const result = await onValidate(dedupedFiles);
+        validationRounds++;
+
+        if (!result.passed) {
+          logger.warn(
+            { round: validationRounds, turn },
+            'In-loop validation failed, feeding errors back to Claude'
+          );
+
+          // Inject assistant end_turn + validation errors as user message
+          messages.push({ role: 'assistant', content: response.content });
+          messages.push({
+            role: 'user',
+            content: `Your generated code was written to disk and validated. Validation FAILED.\n\n${result.errors}\n\nFix ALL errors by rewriting the affected files with the write_file or modify_file tools. Do not explain — just fix the code.`,
+          });
+          // Continue the loop — Claude will fix the errors
+          continue;
+        }
+
+        logger.info({ round: validationRounds, turn }, 'In-loop validation passed');
+        validationPassed = true;
+      }
       break;
     }
 
@@ -280,12 +339,132 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
     logger.warn('Tool loop completed without producing any files');
   }
 
+  // If validator was provided but never ran (e.g., 0 files), mark as undefined
+  if (validationPassed === undefined && validationRounds > 0) {
+    validationPassed = false;
+  }
+
   return {
-    files,
+    files: deduplicateFiles(files),
     violations,
     tokenUsage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+    validationPassed,
   };
 }
+
+// ---------------------------------------------------------------------------
+// In-loop validation: writes files to disk, runs tsc + eslint, returns errors
+// ---------------------------------------------------------------------------
+
+async function writeFilesToDisk(
+  projectRoot: string,
+  files: BuilderGeneratedFile[]
+): Promise<string[]> {
+  const paths: string[] = [];
+  for (const file of files) {
+    const fullPath = join(projectRoot, file.path);
+    await mkdir(dirname(fullPath), { recursive: true });
+    await writeFile(fullPath, file.content, 'utf-8');
+    paths.push(file.path);
+  }
+  return paths;
+}
+
+async function cleanupFiles(projectRoot: string, paths: string[]): Promise<void> {
+  for (const p of paths) {
+    try {
+      await unlink(join(projectRoot, p));
+    } catch {
+      // Ignore — file may not exist
+    }
+  }
+}
+
+async function runValidationSteps(
+  projectRoot: string,
+  generatedPaths: Set<string>
+): Promise<{ passed: boolean; errors: string }> {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const execFileAsync = promisify(execFile);
+  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const timeout = 60_000;
+
+  const errorParts: string[] = [];
+
+  // Typecheck — run full tsc but filter errors to generated files only
+  try {
+    await execFileAsync(npx, ['tsc', '--noEmit'], {
+      cwd: projectRoot,
+      timeout,
+      env: { ...process.env, NODE_ENV: 'test' },
+    });
+  } catch (err: unknown) {
+    const error = err as { stdout?: string; stderr?: string };
+    const output = ((error.stdout ?? '') + (error.stderr ?? '')).trim();
+    // Filter errors to only show lines about generated files
+    const relevantLines = output
+      .split('\n')
+      .filter((line) => [...generatedPaths].some((p) => line.includes(p)));
+    if (relevantLines.length > 0) {
+      errorParts.push(`### TypeScript errors\n\`\`\`\n${relevantLines.join('\n')}\n\`\`\``);
+    }
+  }
+
+  // ESLint — only lint generated files
+  const srcFiles = [...generatedPaths].filter(
+    (p) => p.startsWith('src/') || p.startsWith('tests/')
+  );
+  if (srcFiles.length > 0) {
+    try {
+      await execFileAsync(npx, ['eslint', ...srcFiles], {
+        cwd: projectRoot,
+        timeout,
+        env: { ...process.env, NODE_ENV: 'test' },
+      });
+    } catch (err: unknown) {
+      const error = err as { stdout?: string; stderr?: string };
+      const output = ((error.stdout ?? '') + (error.stderr ?? '')).trim();
+      if (output.length > 0) {
+        errorParts.push(`### ESLint errors\n\`\`\`\n${output.slice(0, 2000)}\n\`\`\``);
+      }
+    }
+  }
+
+  if (errorParts.length === 0) {
+    return { passed: true, errors: '' };
+  }
+
+  return { passed: false, errors: errorParts.join('\n\n') };
+}
+
+function buildValidateCallback(projectRoot: string): ValidateCallback {
+  return async (files: BuilderGeneratedFile[]) => {
+    // Write files to disk so tsc and eslint can see them
+    const paths = await writeFilesToDisk(projectRoot, files);
+    logger.info(
+      { fileCount: paths.length },
+      'In-loop validation: files written, running tsc + eslint'
+    );
+
+    const generatedPaths = new Set(paths);
+    const result = await runValidationSteps(projectRoot, generatedPaths);
+
+    if (result.passed) {
+      logger.info('In-loop validation passed');
+    } else {
+      logger.warn({ errorLength: result.errors.length }, 'In-loop validation failed');
+      // Clean up files so they don't interfere with git state
+      await cleanupFiles(projectRoot, paths);
+    }
+
+    return result;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export async function generatePlan(
   prompt: string,
@@ -376,6 +555,7 @@ export async function generateCode(
     projectRoot,
     onToolActivity,
     allowedPlanPaths,
+    onValidate: buildValidateCallback(projectRoot),
   });
 }
 

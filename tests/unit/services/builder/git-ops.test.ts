@@ -8,6 +8,7 @@ const mockCheckout = vi.fn();
 const mockDeleteLocalBranch = vi.fn();
 const mockBranch = vi.fn().mockResolvedValue({ current: 'builder/test-branch' });
 const mockRemote = vi.fn();
+const mockRaw = vi.fn().mockResolvedValue('');
 
 vi.mock('simple-git', () => ({
   simpleGit: () => ({
@@ -19,7 +20,13 @@ vi.mock('simple-git', () => ({
     deleteLocalBranch: (...args: unknown[]) => mockDeleteLocalBranch(...args),
     branch: (...args: unknown[]) => mockBranch(...args),
     remote: (...args: unknown[]) => mockRemote(...args),
+    raw: (...args: unknown[]) => mockRaw(...args),
   }),
+}));
+
+vi.mock('node:fs/promises', () => ({
+  mkdtemp: vi.fn().mockResolvedValue('/tmp/fenice-builder-abc123'),
+  rm: vi.fn().mockResolvedValue(undefined),
 }));
 
 const {
@@ -30,6 +37,11 @@ const {
   cleanupBranch,
   parseGitHubUrl,
   detectGitHubRemote,
+  createWorktree,
+  createDraftWorktree,
+  commitInWorktree,
+  pushFromWorktree,
+  removeWorktree,
 } = await import('../../../../src/services/builder/git-ops.js');
 
 describe('git-ops', () => {
@@ -234,6 +246,94 @@ describe('git-ops', () => {
       mockDeleteLocalBranch.mockRejectedValueOnce(new Error('Branch not found'));
 
       await expect(cleanupBranch('/project', 'builder/gone')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('createWorktree', () => {
+    it('should create a worktree with builder branch', async () => {
+      const result = await createWorktree('/project', 'job-789', 'Add notes endpoint');
+
+      expect(result.branch).toMatch(/^builder\/job-789-add-notes-endpoint$/);
+      expect(result.worktreePath).toBe('/tmp/fenice-builder-abc123');
+      expect(mockRaw).toHaveBeenCalledWith([
+        'worktree',
+        'add',
+        '-b',
+        result.branch,
+        '/tmp/fenice-builder-abc123',
+        'HEAD',
+      ]);
+    });
+  });
+
+  describe('createDraftWorktree', () => {
+    it('should create a worktree with draft branch', async () => {
+      const result = await createDraftWorktree('/project', 'job-789', 'Fix auth');
+
+      expect(result.branch).toMatch(/^draft\/job-789-fix-auth$/);
+      expect(result.worktreePath).toBe('/tmp/fenice-builder-abc123');
+      expect(mockRaw).toHaveBeenCalledWith([
+        'worktree',
+        'add',
+        '-b',
+        result.branch,
+        '/tmp/fenice-builder-abc123',
+        'HEAD',
+      ]);
+    });
+  });
+
+  describe('commitInWorktree', () => {
+    it('should stage files and commit in worktree', async () => {
+      const hash = await commitInWorktree('/tmp/fenice-builder-abc123', 'job-789', 'Add notes', [
+        'src/schemas/note.schema.ts',
+      ]);
+
+      expect(hash).toBe('abc123');
+      expect(mockAdd).toHaveBeenCalledWith(['src/schemas/note.schema.ts']);
+      const commitMsg = mockCommit.mock.calls[0]?.[0] as string;
+      expect(commitMsg).toContain('feat(builder):');
+      expect(commitMsg).toContain('Co-Authored-By: Claude Opus 4.6');
+    });
+
+    it('should use draft prefix when isDraft is true', async () => {
+      await commitInWorktree('/tmp/wt', 'job-789', 'Fix bug', ['file.ts'], true);
+
+      const commitMsg = mockCommit.mock.calls[0]?.[0] as string;
+      expect(commitMsg).toContain('draft(builder):');
+      expect(commitMsg).toContain('NOTE: Validation failed');
+    });
+  });
+
+  describe('pushFromWorktree', () => {
+    it('should push to origin from worktree', async () => {
+      await pushFromWorktree('/tmp/fenice-builder-abc123', 'builder/job-789-add-notes');
+
+      expect(mockPush).toHaveBeenCalledWith('origin', 'builder/job-789-add-notes', [
+        '--set-upstream',
+      ]);
+    });
+  });
+
+  describe('removeWorktree', () => {
+    it('should remove worktree and delete branch', async () => {
+      await removeWorktree('/project', '/tmp/fenice-builder-abc123', 'builder/job-789-add-notes');
+
+      expect(mockRaw).toHaveBeenCalledWith([
+        'worktree',
+        'remove',
+        '/tmp/fenice-builder-abc123',
+        '--force',
+      ]);
+      expect(mockDeleteLocalBranch).toHaveBeenCalledWith('builder/job-789-add-notes', true);
+    });
+
+    it('should not throw if worktree remove fails', async () => {
+      mockRaw.mockRejectedValueOnce(new Error('not a worktree'));
+
+      await expect(
+        removeWorktree('/project', '/tmp/gone', 'builder/gone')
+      ).resolves.toBeUndefined();
     });
   });
 });
