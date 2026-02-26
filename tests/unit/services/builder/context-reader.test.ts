@@ -22,8 +22,13 @@ vi.mock('node:fs/promises', () => ({
   }),
 }));
 
-const { buildContextBundle, formatContextForPrompt, buildDynamicContext, formatDynamicContext } =
-  await import('../../../../src/services/builder/context-reader.js');
+const {
+  buildContextBundle,
+  formatContextForPrompt,
+  formatContextForGeneration,
+  buildDynamicContext,
+  formatDynamicContext,
+} = await import('../../../../src/services/builder/context-reader.js');
 
 describe('buildContextBundle', () => {
   it('should build a context bundle from project files', async () => {
@@ -77,6 +82,61 @@ describe('formatContextForPrompt', () => {
     expect(result).toContain('Example Schema');
     expect(result).not.toContain('OpenAPI Spec');
     expect(result).not.toContain('Example Model');
+  });
+});
+
+describe('formatContextForGeneration', () => {
+  it('should include all 4 example files', () => {
+    const bundle = {
+      openApiSpec: '{"openapi": "3.1.0"}',
+      projectConventions:
+        '## Tech Stack\n| Layer | Tech |\n\n## Code Style & Conventions\n- Strict mode\n\n## Architecture\nDocs\n',
+      exampleSchema: 'export const UserSchema = z.object({});',
+      exampleModel: 'export const UserModel = mongoose.model("User");',
+      exampleService: 'export class UserService {}',
+      exampleRoute: 'export const userRouter = new OpenAPIHono();',
+    };
+
+    const result = formatContextForGeneration(bundle);
+
+    expect(result).toContain('Example Schema');
+    expect(result).toContain('Example Model');
+    expect(result).toContain('Example Service');
+    expect(result).toContain('Example Route');
+  });
+
+  it('should include trimmed conventions', () => {
+    const bundle = {
+      openApiSpec: '',
+      projectConventions: '## Tech Stack\n| Layer | Tech |\n\n## Architecture\nDocs\n',
+      exampleSchema: 'schema',
+      exampleModel: 'model',
+      exampleService: 'service',
+      exampleRoute: 'route',
+    };
+
+    const result = formatContextForGeneration(bundle);
+
+    expect(result).toContain('Tech Stack');
+    expect(result).not.toContain('Architecture');
+  });
+
+  it('should skip empty example sections', () => {
+    const bundle = {
+      openApiSpec: '',
+      projectConventions: '',
+      exampleSchema: 'schema content',
+      exampleModel: '',
+      exampleService: '',
+      exampleRoute: '',
+    };
+
+    const result = formatContextForGeneration(bundle);
+
+    expect(result).toContain('Example Schema');
+    expect(result).not.toContain('Example Model');
+    expect(result).not.toContain('Example Service');
+    expect(result).not.toContain('Example Route');
   });
 });
 

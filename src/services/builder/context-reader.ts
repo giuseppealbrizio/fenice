@@ -160,10 +160,28 @@ export function formatContextForGeneration(bundle: ContextBundle): string {
     parts.push('## Project Conventions (excerpt)\n```\n' + trimmed + '\n```\n');
   }
 
-  // Only one example (schema) — the plan constrains the rest
+  // All 4 example files — Claude needs these to match project patterns
   if (bundle.exampleSchema) {
     parts.push(
       '## Example Schema (user.schema.ts)\n```typescript\n' + bundle.exampleSchema + '\n```\n'
+    );
+  }
+
+  if (bundle.exampleModel) {
+    parts.push(
+      '## Example Model (user.model.ts)\n```typescript\n' + bundle.exampleModel + '\n```\n'
+    );
+  }
+
+  if (bundle.exampleService) {
+    parts.push(
+      '## Example Service (user.service.ts)\n```typescript\n' + bundle.exampleService + '\n```\n'
+    );
+  }
+
+  if (bundle.exampleRoute) {
+    parts.push(
+      '## Example Route (user.routes.ts)\n```typescript\n' + bundle.exampleRoute + '\n```\n'
     );
   }
 

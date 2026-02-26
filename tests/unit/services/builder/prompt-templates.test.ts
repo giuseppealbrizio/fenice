@@ -23,7 +23,6 @@ const ALL_TASK_TYPES: TaskType[] = [
 describe('BUILDER_BASE_PROMPT', () => {
   it('should contain critical rules', () => {
     expect(BUILDER_BASE_PROMPT).toContain('.js');
-    expect(BUILDER_BASE_PROMPT).toContain('Zod v4');
     expect(BUILDER_BASE_PROMPT).toContain('exactOptionalPropertyTypes');
     expect(BUILDER_BASE_PROMPT).toContain('loadEnv');
   });
@@ -32,6 +31,33 @@ describe('BUILDER_BASE_PROMPT', () => {
     expect(BUILDER_BASE_PROMPT).toContain('kebab-case');
     expect(BUILDER_BASE_PROMPT).toContain('PascalCase');
     expect(BUILDER_BASE_PROMPT).toContain('tools');
+  });
+
+  it('should contain Zod v4 API section with correct methods', () => {
+    expect(BUILDER_BASE_PROMPT).toContain('z.email()');
+    expect(BUILDER_BASE_PROMPT).toContain('z.url()');
+    expect(BUILDER_BASE_PROMPT).toContain('z.iso.datetime()');
+    expect(BUILDER_BASE_PROMPT).toContain('.issues');
+  });
+
+  it('should contain route pattern rules', () => {
+    expect(BUILDER_BASE_PROMPT).toContain('OpenAPIHono');
+    expect(BUILDER_BASE_PROMPT).toContain('AuthEnv');
+    expect(BUILDER_BASE_PROMPT).toContain("c.get('userId')");
+    expect(BUILDER_BASE_PROMPT).toContain('NO try/catch in route handlers');
+  });
+
+  it('should contain service pattern rules', () => {
+    expect(BUILDER_BASE_PROMPT).toContain('NotFoundError');
+    expect(BUILDER_BASE_PROMPT).toContain('cursor-based');
+    expect(BUILDER_BASE_PROMPT).toContain('findByIdAndUpdate');
+  });
+
+  it('should contain error class reference', () => {
+    expect(BUILDER_BASE_PROMPT).toContain('NotFoundError');
+    expect(BUILDER_BASE_PROMPT).toContain('ForbiddenError');
+    expect(BUILDER_BASE_PROMPT).toContain('ValidationError');
+    expect(BUILDER_BASE_PROMPT).toContain('NotAuthorizedError');
   });
 });
 
@@ -50,7 +76,7 @@ describe('buildSystemPrompt', () => {
       const prompt = buildSystemPrompt(taskType);
       expect(prompt).toContain('.js');
       expect(prompt).toContain('kebab-case');
-      expect(prompt).toContain('Zod v4');
+      expect(prompt).toContain('z.iso.datetime()');
       expect(prompt).toContain('tools');
     }
   });

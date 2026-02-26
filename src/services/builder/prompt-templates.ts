@@ -5,18 +5,49 @@ Your job is to generate production-ready API endpoints based on the user's promp
 
 ## Critical Rules
 1. ALL local imports MUST end in .js extension: import { foo } from './bar.js';
-2. Use Zod v4 API (.issues not .errors for ZodError)
-3. exactOptionalPropertyTypes is enabled — do NOT add | undefined to optional parameters
-4. noUncheckedIndexedAccess is enabled — indexed access returns T | undefined
-5. Mongoose _id.toString() for string IDs; toJSON transform handles id conversion
-6. loadEnv() must NEVER be called at module level — use lazy initialization
-7. Files: kebab-case. Classes: PascalCase. Schemas: PascalCase + Schema suffix.
+2. exactOptionalPropertyTypes is enabled — do NOT add | undefined to optional parameters
+3. noUncheckedIndexedAccess is enabled — indexed access returns T | undefined
+4. Mongoose _id.toString() for string IDs; toJSON transform handles id conversion
+5. loadEnv() must NEVER be called at module level — use lazy initialization
+6. Files: kebab-case. Classes: PascalCase. Schemas: PascalCase + Schema suffix.
+7. Every file MUST end with a newline character.
+
+## Zod v4 API — MUST use these exact APIs
+- \`z.email()\` — NOT z.string().email()
+- \`z.url()\` — NOT z.string().url()
+- \`z.iso.datetime()\` — NOT z.string().datetime() or z.string().isoDatetime()
+- \`z.coerce.boolean()\` / \`z.coerce.number()\` for query param type coercion
+- Access errors via \`.issues\` on ZodError (NOT .errors)
+- Tests: use \`.safeParse(data).success\` or \`expect(() => Schema.parse(data)).toThrow()\` — do NOT assert specific error codes
+
+## Route Pattern — MUST follow exactly
+- Import: \`import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';\`
+- Define AuthEnv type inline: \`type AuthEnv = { Variables: { userId: string; email: string; role: string; requestId: string } };\`
+- Create router: \`export const fooRouter = new OpenAPIHono<AuthEnv>();\`
+- Auth middleware is applied GLOBALLY in src/index.ts — do NOT import or apply authMiddleware in route files
+- RBAC: \`import { requireRole } from '../middleware/rbac.js';\` and apply per-route: \`router.use('/path', requireRole('admin'));\`
+- Access auth context: \`c.get('userId')\`, \`c.get('email')\`, \`c.get('role')\`
+- NO try/catch in route handlers — errors thrown from services are caught by the global error handler
+- Route definitions use \`createRoute()\` with responses for each possible status code
+- Query params: \`c.req.valid('query')\`, Path params: \`c.req.valid('param')\`, Body: \`c.req.valid('json')\`
+
+## Service Pattern — MUST follow exactly
+- Services are classes with methods for each operation
+- Always throw on not-found: \`throw new NotFoundError('X not found')\` — never return null
+- Updates use: \`Model.findByIdAndUpdate(id, data, { new: true, runValidators: true })\`
+- Pagination: cursor-based using \`decodeCursor\`/\`encodeCursor\` from ../utils/pagination.js
+- Return raw Mongoose documents — serialization is the route handler's responsibility
+
+## Error Classes (from ../utils/errors.js)
+- NotFoundError(message?) — 404
+- NotAuthorizedError(message?) — 401
+- ForbiddenError(message?) — 403
+- ValidationError(details[]) — 400, details: { field?: string, message: string }[]
+- AppError(statusCode, code, message) — for custom one-off errors
 
 ## Instructions
 - Generate COMPLETE, working code — not scaffolds or placeholders
-- Follow the project conventions and example files provided in the context
-- Include proper error handling using AppError subclasses from ../utils/errors.js
-- Include proper TypeScript types — no \`any\`
+- Follow the project conventions and example files provided in the context EXACTLY
 - Use the tools provided to write each file
 - ONLY create or modify files listed in the approved plan. Do NOT touch any other files — attempts to write outside the plan will be rejected and waste a tool call.
 - Do NOT modify utility files (src/utils/*), middleware, or shared infrastructure unless they are explicitly in the plan.
