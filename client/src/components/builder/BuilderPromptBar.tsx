@@ -16,6 +16,8 @@ import {
   GLOW_KEYFRAMES,
 } from './builder-theme';
 import { BuilderTaskSelector } from './BuilderTaskSelector';
+import { BuilderDraftResult } from './BuilderDraftResult';
+import { BuilderResultPanel } from './BuilderResultPanel';
 
 const WS_TOKEN = import.meta.env.VITE_WS_TOKEN as string | undefined;
 
@@ -35,8 +37,15 @@ export function BuilderPromptBar(): React.JSX.Element {
   const error = useBuilderStore((s) => s.error);
   const dryRun = useBuilderStore((s) => s.dryRun);
   const setDryRun = useBuilderStore((s) => s.setDryRun);
-  const setResult = useBuilderStore((s) => s.setResult);
+  const setFullResult = useBuilderStore((s) => s.setFullResult);
   const setError = useBuilderStore((s) => s.setError);
+  const diffs = useBuilderStore((s) => s.diffs);
+  const planCoverage = useBuilderStore((s) => s.planCoverage);
+  const impactedFiles = useBuilderStore((s) => s.impactedFiles);
+  const validationErrors = useBuilderStore((s) => s.validationErrors);
+  const prUrl = useBuilderStore((s) => s.prUrl);
+  const prNumber = useBuilderStore((s) => s.prNumber);
+  const branch = useBuilderStore((s) => s.branch);
   const dismiss = useBuilderStore((s) => s.dismiss);
   const plan = useBuilderStore((s) => s.plan);
   const summary = useBuilderStore((s) => s.summary);
@@ -108,7 +117,7 @@ export function BuilderPromptBar(): React.JSX.Element {
       .then((job) => {
         if (cancelled) return;
         if ((job.status === 'completed' || job.status === 'completed_draft') && job.result) {
-          setResult(job.result.files);
+          setFullResult(job.result);
         } else if (job.status === 'failed' && job.error) {
           setError(job.error.message);
         }
@@ -121,7 +130,7 @@ export function BuilderPromptBar(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [jobId, status, setResult, setError]);
+  }, [jobId, status, setFullResult, setError]);
 
   // Fetch plan details when status reaches plan_ready
   useEffect(() => {
@@ -369,11 +378,13 @@ export function BuilderPromptBar(): React.JSX.Element {
               style={{
                 fontSize: '12px',
                 color:
-                  status === 'completed' || status === 'completed_draft'
+                  status === 'completed'
                     ? theme.successText
-                    : status === 'failed' || status === 'rejected'
-                      ? theme.errorText
-                      : theme.text,
+                    : status === 'completed_draft'
+                      ? theme.draftText
+                      : status === 'failed' || status === 'rejected'
+                        ? theme.errorText
+                        : theme.text,
                 fontWeight: 500,
               }}
             >
@@ -441,7 +452,7 @@ export function BuilderPromptBar(): React.JSX.Element {
               </div>
             </>
           )}
-          {(status === 'completed' || status === 'completed_draft') && (
+          {status === 'completed' && (
             <div
               style={{
                 height: '4px',
@@ -449,6 +460,17 @@ export function BuilderPromptBar(): React.JSX.Element {
                 width: '100%',
                 backgroundColor: theme.successText,
                 boxShadow: `0 0 8px ${theme.successText}40, 0 0 16px ${theme.successText}20`,
+              }}
+            />
+          )}
+          {status === 'completed_draft' && (
+            <div
+              style={{
+                height: '4px',
+                borderRadius: '2px',
+                width: '100%',
+                backgroundColor: theme.draftText,
+                boxShadow: `0 0 8px ${theme.draftText}40`,
               }}
             />
           )}
@@ -649,75 +671,31 @@ export function BuilderPromptBar(): React.JSX.Element {
         </div>
       )}
 
-      {/* File list */}
-      {files.length > 0 && (
-        <div>
-          <div
-            style={{
-              fontSize: '11px',
-              color: theme.muted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              marginBottom: '6px',
-            }}
-          >
-            Generated Files ({files.length})
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-              maxHeight: '160px',
-              overflowY: 'auto',
-            }}
-          >
-            {files.map((file) => (
-              <div
-                key={file.path}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '12px',
-                  padding: '4px 6px',
-                  borderRadius: '4px',
-                  backgroundColor:
-                    visualMode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    padding: '1px 5px',
-                    borderRadius: '3px',
-                    color: '#fff',
-                    backgroundColor:
-                      file.action === 'created' ? theme.badgeCreated : theme.badgeModified,
-                    textTransform: 'uppercase',
-                    flexShrink: 0,
-                  }}
-                >
-                  {file.action}
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace',
-                    fontSize: '11px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    color: theme.text,
-                  }}
-                >
-                  {file.path}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Draft result (completed_draft) */}
+      {status === 'completed_draft' && prUrl && prNumber && branch && (
+        <BuilderDraftResult
+          prUrl={prUrl}
+          prNumber={prNumber}
+          branch={branch}
+          validationErrors={validationErrors ?? []}
+          files={files}
+          theme={theme}
+        />
+      )}
+
+      {/* Result panel (completed) */}
+      {status === 'completed' && files.length > 0 && (
+        <BuilderResultPanel
+          files={files}
+          prUrl={prUrl}
+          prNumber={prNumber}
+          branch={branch}
+          diffs={diffs}
+          planCoverage={planCoverage}
+          impactedFiles={impactedFiles}
+          theme={theme}
+          visualMode={visualMode}
+        />
       )}
     </div>
   );

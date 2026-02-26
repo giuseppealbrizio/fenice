@@ -81,7 +81,7 @@ export const BUILDER_THEME = {
   },
 } as const;
 
-export type BuilderTheme = (typeof BUILDER_THEME)['dark'];
+export type BuilderTheme = (typeof BUILDER_THEME)['dark'] | (typeof BUILDER_THEME)['light'];
 
 export const TYPE_COLORS: Record<string, string> = {
   schema: '#8b5cf6',
