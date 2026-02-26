@@ -82,7 +82,14 @@ export const BuilderJobErrorSchema = z.object({
   step: BuilderJobStatusEnum.optional(),
 });
 
-export const BuilderPlanFileTypeEnum = z.enum(['schema', 'model', 'service', 'route', 'test']);
+export const BuilderPlanFileTypeEnum = z.enum([
+  'schema',
+  'model',
+  'service',
+  'route',
+  'test',
+  'config',
+]);
 
 export const BuilderPlanFileSchema = z.object({
   path: z.string().min(1),

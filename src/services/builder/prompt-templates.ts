@@ -70,8 +70,9 @@ Generate files in this exact order:
 3. Service (src/services/<name>.service.ts) — Business logic for all 5 CRUD operations
 4. Route (src/routes/<name>.routes.ts) — OpenAPI route definitions + handlers for all 5 endpoints
 5. Tests (tests/unit/schemas/<name>.schema.test.ts) — Schema validation tests
+6. Mount route in src/index.ts — Add import and app.route('/api/v1/<name>s', <name>Router) near the existing app.route() calls
 
-IMPORTANT: You MUST generate ALL 5 endpoints. Do NOT skip any.
+IMPORTANT: You MUST generate ALL 5 endpoints AND mount the route in src/index.ts. Without step 6, the endpoints are unreachable.
 `,
 
   refactor: `## Task: Refactor

@@ -227,6 +227,21 @@ export class BuilderService {
         PIPELINE_TIMEOUT_MS,
         'Planning'
       );
+
+      // Auto-include src/index.ts when plan creates new route files.
+      // Without this, new routes are dead code — they must be mounted in the Hono app.
+      const hasNewRoute = plan.files.some((f) => f.type === 'route' && f.action === 'create');
+      const alreadyIncludesIndex = plan.files.some((f) => f.path === 'src/index.ts');
+      if (hasNewRoute && !alreadyIncludesIndex) {
+        plan.files.push({
+          path: 'src/index.ts',
+          type: 'config',
+          action: 'modify',
+          description: 'Mount new route in the Hono app via app.route()',
+        });
+        logger.info({ jobId }, 'Auto-added src/index.ts to plan (new route detected)');
+      }
+
       logger.info({ jobId, fileCount: plan.files.length }, 'Plan generated');
 
       await BuilderJobModel.findByIdAndUpdate(jobId, { plan, status: 'plan_ready' });
