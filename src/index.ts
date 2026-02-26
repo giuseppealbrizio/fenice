@@ -76,7 +76,8 @@ app.use('/api/v1/auth/logout', authMiddleware);
 app.use('/api/v1/upload/*', authMiddleware);
 app.use('/api/v1/upload/*', rateLimiter({ windowMs: 60_000, max: 5 }));
 app.use('/api/v1/builder/*', authMiddleware);
-app.use(
+// Strict rate limit on builder mutations only (POST) — not on GET status polling
+app.post(
   '/api/v1/builder/*',
   rateLimiter({
     windowMs: Number(process.env['BUILDER_RATE_LIMIT_WINDOW_MS']) || 3_600_000,

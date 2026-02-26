@@ -29,8 +29,8 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('fenice', process.env['LOG_LEVEL'] ?? 'info');
 
-const MAX_TURNS = 25;
-const MAX_VALIDATION_ROUNDS = 3;
+const MAX_TURNS = 15;
+const MAX_VALIDATION_ROUNDS = 2;
 
 export type ToolActivityCallback = (tool: string, path: string) => void;
 
@@ -91,6 +91,7 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
   const files: BuilderGeneratedFile[] = [];
   const violations: ScopePolicyViolation[] = [];
   const createdPaths = new Set<string>();
+  const warnedPaths = new Set<string>();
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let validationRounds = 0;
@@ -225,11 +226,15 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
           files.push({ path, content, action: 'created' });
           createdPaths.add(path);
 
-          const codeIssues = checkCodePatterns(path, content);
-          const warning =
-            codeIssues.length > 0
-              ? `\nWARNING — fix these with modify_file:\n${codeIssues.map((i) => `- ${i}`).join('\n')}`
-              : '';
+          // Show pattern hints only on first write per file — avoids correction loops
+          let warning = '';
+          if (!warnedPaths.has(path)) {
+            const codeIssues = checkCodePatterns(path, content);
+            if (codeIssues.length > 0) {
+              warning = `\nNote: ${codeIssues.map((i) => `- ${i}`).join('\n')}`;
+              warnedPaths.add(path);
+            }
+          }
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,
@@ -280,15 +285,10 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
 
           files.push({ path, content, action: 'modified' });
 
-          const modifyCodeIssues = checkCodePatterns(path, content);
-          const modifyWarning =
-            modifyCodeIssues.length > 0
-              ? `\nWARNING — fix these with modify_file:\n${modifyCodeIssues.map((i) => `- ${i}`).join('\n')}`
-              : '';
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,
-            content: `File modified: ${path}${modifyWarning}`,
+            content: `File modified: ${path}`,
           });
         } else if (toolName === 'read_file') {
           const path = input['path'] ?? '';
