@@ -1,4 +1,4 @@
-import type { BuilderJob, BuilderPlanFile } from '../types/builder';
+import type { BuilderJob, BuilderPlanFile, TaskType } from '../types/builder';
 
 interface SubmitResponse {
   jobId: string;
@@ -7,15 +7,21 @@ interface SubmitResponse {
 export async function submitBuilderPrompt(
   token: string,
   prompt: string,
-  dryRun: boolean
+  dryRun: boolean,
+  taskType?: TaskType
 ): Promise<SubmitResponse> {
+  const options: Record<string, unknown> = { dryRun };
+  if (taskType) {
+    options['taskType'] = taskType;
+  }
+
   const res = await fetch('/api/v1/builder/generate', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ prompt, options: { dryRun } }),
+    body: JSON.stringify({ prompt, options }),
   });
 
   if (!res.ok) {
