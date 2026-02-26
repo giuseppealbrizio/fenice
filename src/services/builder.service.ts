@@ -300,12 +300,11 @@ export class BuilderService {
         'Code generation complete'
       );
 
-      // Check scope policy violations from generation
+      // Log tool-level scope violations (already handled — violated files were not written)
       if (result.violations.length > 0) {
-        throw new AppError(
-          400,
-          'SCOPE_VIOLATION',
-          `Scope policy violations: ${result.violations.map((v) => `${v.file}: ${v.reason}`).join('; ')}`
+        logger.warn(
+          { jobId, violations: result.violations.map((v) => `${v.file}: ${v.reason}`) },
+          'Tool-level scope violations detected (files excluded from result)'
         );
       }
 
@@ -363,7 +362,11 @@ export class BuilderService {
       for (let attempt = 1; attempt <= MAX_REPAIR_ATTEMPTS && !validation.passed; attempt++) {
         logger.warn({ jobId, attempt }, 'Validation failed, attempting repair');
         const errorSummary = formatValidationErrors(validation);
-        const repairResult = await repairCode(currentFiles, errorSummary, projectRoot, apiKey);
+        const repairResult = await withTimeout(
+          repairCode(currentFiles, errorSummary, projectRoot, apiKey),
+          PIPELINE_TIMEOUT_MS,
+          'Repair'
+        );
 
         if (repairResult.violations.length > 0) {
           logger.error(

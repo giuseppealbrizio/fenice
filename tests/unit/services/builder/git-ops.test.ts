@@ -110,7 +110,7 @@ describe('git-ops', () => {
       expect(mockAdd).toHaveBeenCalledWith(files);
     });
 
-    it('should commit with conventional commit message', async () => {
+    it('should commit with conventional commit message and --no-verify', async () => {
       await createBranchAndCommit('/project', 'job-123', 'Add a products endpoint', [
         'src/schemas/product.schema.ts',
       ]);
@@ -120,6 +120,8 @@ describe('git-ops', () => {
       expect(commitMsg).toContain('Add a products endpoint');
       expect(commitMsg).toContain('Co-Authored-By: Claude Opus 4.6');
       expect(commitMsg).toContain('job-123');
+      // Must bypass pre-commit hooks — builder has its own validation step
+      expect(mockCommit.mock.calls[0]?.[2]).toEqual({ '--no-verify': null });
     });
 
     it('should truncate long prompts in commit message', async () => {
@@ -158,7 +160,7 @@ describe('git-ops', () => {
       expect(mockAdd).toHaveBeenCalledWith(files);
     });
 
-    it('should commit with draft prefix and validation note', async () => {
+    it('should commit with draft prefix, validation note, and --no-verify', async () => {
       await createDraftBranchAndCommit('/project', 'job-456', 'Fix auth bug', [
         'src/services/auth.service.ts',
       ]);
@@ -169,6 +171,7 @@ describe('git-ops', () => {
       expect(commitMsg).toContain('NOTE: Validation failed');
       expect(commitMsg).toContain('Co-Authored-By: Claude Opus 4.6');
       expect(commitMsg).toContain('job-456');
+      expect(mockCommit.mock.calls[0]?.[2]).toEqual({ '--no-verify': null });
     });
 
     it('should truncate long prompts in commit message', async () => {
