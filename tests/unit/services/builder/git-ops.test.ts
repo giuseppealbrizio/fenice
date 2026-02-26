@@ -7,9 +7,10 @@ const mockPush = vi.fn();
 const mockCheckout = vi.fn();
 const mockDeleteLocalBranch = vi.fn();
 const mockBranch = vi.fn().mockResolvedValue({ current: 'builder/test-branch' });
+const mockRemote = vi.fn();
 
-function createMockGit() {
-  return {
+vi.mock('simple-git', () => ({
+  simpleGit: () => ({
     checkoutLocalBranch: (...args: unknown[]) => mockCheckoutLocalBranch(...args),
     add: (...args: unknown[]) => mockAdd(...args),
     commit: (...args: unknown[]) => mockCommit(...args),
@@ -17,21 +18,78 @@ function createMockGit() {
     checkout: (...args: unknown[]) => mockCheckout(...args),
     deleteLocalBranch: (...args: unknown[]) => mockDeleteLocalBranch(...args),
     branch: (...args: unknown[]) => mockBranch(...args),
-  };
-}
-
-vi.mock('simple-git', () => ({
-  simpleGit: () => createMockGit(),
+    remote: (...args: unknown[]) => mockRemote(...args),
+  }),
 }));
 
-const { createBranchAndCommit, createDraftBranchAndCommit, pushBranch, cleanupBranch } =
-  await import('../../../../src/services/builder/git-ops.js');
+const {
+  createBranchAndCommit,
+  createDraftBranchAndCommit,
+  pushBranch,
+  cleanupBranch,
+  parseGitHubUrl,
+  detectGitHubRemote,
+} = await import('../../../../src/services/builder/git-ops.js');
 
 describe('git-ops', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCommit.mockResolvedValue({ commit: 'abc123' });
     mockBranch.mockResolvedValue({ current: 'builder/test-branch' });
+  });
+
+  describe('parseGitHubUrl', () => {
+    it('should parse HTTPS URL', () => {
+      const result = parseGitHubUrl('https://github.com/formray/fenice.git');
+      expect(result).toEqual({ owner: 'formray', repo: 'fenice' });
+    });
+
+    it('should parse HTTPS URL without .git suffix', () => {
+      const result = parseGitHubUrl('https://github.com/mario-rossi/my-project');
+      expect(result).toEqual({ owner: 'mario-rossi', repo: 'my-project' });
+    });
+
+    it('should parse SSH URL', () => {
+      const result = parseGitHubUrl('git@github.com:formray/fenice.git');
+      expect(result).toEqual({ owner: 'formray', repo: 'fenice' });
+    });
+
+    it('should parse SSH URL without .git suffix', () => {
+      const result = parseGitHubUrl('git@github.com:mario-rossi/my-project');
+      expect(result).toEqual({ owner: 'mario-rossi', repo: 'my-project' });
+    });
+
+    it('should return null for non-GitHub URL', () => {
+      expect(parseGitHubUrl('https://gitlab.com/user/repo.git')).toBeNull();
+    });
+
+    it('should return null for empty string', () => {
+      expect(parseGitHubUrl('')).toBeNull();
+    });
+  });
+
+  describe('detectGitHubRemote', () => {
+    it('should detect owner/repo from origin remote', async () => {
+      mockRemote.mockResolvedValue('https://github.com/mario-rossi/fenice.git\n');
+
+      const result = await detectGitHubRemote('/project');
+      expect(result).toEqual({ owner: 'mario-rossi', repo: 'fenice' });
+      expect(mockRemote).toHaveBeenCalledWith(['get-url', 'origin']);
+    });
+
+    it('should return null if remote call fails', async () => {
+      mockRemote.mockRejectedValue(new Error('not a git repo'));
+
+      const result = await detectGitHubRemote('/project');
+      expect(result).toBeNull();
+    });
+
+    it('should return null for non-GitHub remote', async () => {
+      mockRemote.mockResolvedValue('https://gitlab.com/user/repo.git\n');
+
+      const result = await detectGitHubRemote('/project');
+      expect(result).toBeNull();
+    });
   });
 
   describe('createBranchAndCommit', () => {

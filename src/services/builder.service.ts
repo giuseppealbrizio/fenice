@@ -18,6 +18,8 @@ import {
   createDraftBranchAndCommit,
   pushBranch,
   cleanupBranch,
+  detectGitHubRemote,
+  detectGitHubToken,
 } from './builder/git-ops.js';
 import { createPullRequest } from './builder/github-pr.js';
 import { validateProject, formatValidationErrors } from './builder/validator.js';
@@ -172,18 +174,38 @@ export class BuilderService {
     return key;
   }
 
-  private getGitHubConfig(): { token: string; owner: string; repo: string } {
-    const token = process.env['GITHUB_TOKEN'];
-    const owner = process.env['GITHUB_OWNER'];
-    const repo = process.env['GITHUB_REPO'];
-    if (!token || !owner || !repo) {
+  private async getGitHubConfig(): Promise<{ token: string; owner: string; repo: string }> {
+    // Token: env var → gh CLI
+    const token = await detectGitHubToken();
+    if (!token) {
       throw new AppError(
         500,
         'CONFIG_ERROR',
-        'GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO must be configured'
+        'GitHub token not found. Set GITHUB_TOKEN in .env or run `gh auth login`.'
       );
     }
-    return { token, owner, repo };
+
+    // Owner/repo: env vars → auto-detect from git remote
+    const envOwner = process.env['GITHUB_OWNER'];
+    const envRepo = process.env['GITHUB_REPO'];
+    if (envOwner && envRepo) {
+      return { token, owner: envOwner, repo: envRepo };
+    }
+
+    const remote = await detectGitHubRemote(this.getProjectRoot());
+    if (remote) {
+      logger.info(
+        { owner: remote.owner, repo: remote.repo },
+        'Auto-detected GitHub owner/repo from origin remote'
+      );
+      return { token, owner: remote.owner, repo: remote.repo };
+    }
+
+    throw new AppError(
+      500,
+      'CONFIG_ERROR',
+      'Could not detect GitHub owner/repo. Set GITHUB_OWNER and GITHUB_REPO in .env, or ensure origin remote points to GitHub.'
+    );
   }
 
   private async executePlanning(jobId: string, prompt: string): Promise<void> {
@@ -377,7 +399,7 @@ export class BuilderService {
           prompt,
           draftPaths
         );
-        const github = this.getGitHubConfig();
+        const github = await this.getGitHubConfig();
         await pushBranch(projectRoot, draftBranch);
 
         const pr = await createPullRequest(
@@ -415,7 +437,7 @@ export class BuilderService {
       currentStep = 'creating_pr';
       await this.updateStatus(jobId, currentStep);
       this.notifier?.emitProgress(jobId, currentStep);
-      const github = this.getGitHubConfig();
+      const github = await this.getGitHubConfig();
       await pushBranch(projectRoot, branch);
       const pr = await createPullRequest(
         branch,

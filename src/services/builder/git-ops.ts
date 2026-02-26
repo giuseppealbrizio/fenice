@@ -1,7 +1,61 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import { createLogger } from '../../utils/logger.js';
 
+const execFileAsync = promisify(execFile);
 const logger = createLogger('fenice', process.env['LOG_LEVEL'] ?? 'info');
+
+// ---------------------------------------------------------------------------
+// GitHub remote auto-detection
+// ---------------------------------------------------------------------------
+
+export function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
+  // HTTPS: https://github.com/owner/repo.git
+  const httpsMatch = /github\.com\/([^/]+)\/([^/.]+)/.exec(url);
+  if (httpsMatch?.[1] && httpsMatch[2]) {
+    return { owner: httpsMatch[1], repo: httpsMatch[2] };
+  }
+  // SSH: git@github.com:owner/repo.git
+  const sshMatch = /github\.com:([^/]+)\/([^/.]+)/.exec(url);
+  if (sshMatch?.[1] && sshMatch[2]) {
+    return { owner: sshMatch[1], repo: sshMatch[2] };
+  }
+  return null;
+}
+
+export async function detectGitHubRemote(
+  projectRoot: string
+): Promise<{ owner: string; repo: string } | null> {
+  try {
+    const git: SimpleGit = simpleGit(projectRoot);
+    const url = await git.remote(['get-url', 'origin']);
+    if (!url) return null;
+    return parseGitHubUrl(url.trim());
+  } catch {
+    return null;
+  }
+}
+
+export async function detectGitHubToken(): Promise<string | null> {
+  // 1. Env var takes priority
+  const envToken = process.env['GITHUB_TOKEN'];
+  if (envToken) return envToken;
+
+  // 2. Try GitHub CLI
+  try {
+    const { stdout } = await execFileAsync('gh', ['auth', 'token'], { timeout: 5000 });
+    const token = stdout.trim();
+    if (token) {
+      logger.info('GitHub token detected via gh CLI');
+      return token;
+    }
+  } catch {
+    // gh not installed or not authenticated — fall through
+  }
+
+  return null;
+}
 
 export interface GitCommitResult {
   branch: string;
