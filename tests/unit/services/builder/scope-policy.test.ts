@@ -3,6 +3,7 @@ import {
   validateFilePath,
   validateReadPath,
   scanContentForDangerousPatterns,
+  checkCodePatterns,
   validateGeneratedFiles,
 } from '../../../../src/services/builder/scope-policy.js';
 
@@ -220,6 +221,127 @@ describe('validateGeneratedFiles', () => {
     ]);
     expect(violations).toHaveLength(1);
     expect(violations[0]?.file).toBe('package.json');
+  });
+});
+
+describe('checkCodePatterns', () => {
+  describe('Zod v4 API checks', () => {
+    it('should reject z.string().email()', () => {
+      const issues = checkCodePatterns(
+        'src/schemas/note.schema.ts',
+        'const s = z.string().email();\n'
+      );
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues[0]).toContain('z.email()');
+    });
+
+    it('should reject z.string().url()', () => {
+      const issues = checkCodePatterns(
+        'src/schemas/note.schema.ts',
+        'const s = z.string().url();\n'
+      );
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues[0]).toContain('z.url()');
+    });
+
+    it('should reject z.string().datetime()', () => {
+      const issues = checkCodePatterns(
+        'src/schemas/note.schema.ts',
+        'const s = z.string().datetime();\n'
+      );
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues[0]).toContain('z.iso.datetime()');
+    });
+
+    it('should accept z.email() and z.iso.datetime()', () => {
+      const content = `import { z } from 'zod';
+export const S = z.object({ email: z.email(), date: z.iso.datetime() });
+`;
+      const issues = checkCodePatterns('src/schemas/note.schema.ts', content);
+      expect(issues).toHaveLength(0);
+    });
+  });
+
+  describe('import extension checks', () => {
+    it('should reject .ts extension in imports', () => {
+      const issues = checkCodePatterns(
+        'src/routes/note.routes.ts',
+        "import { NoteSchema } from '../schemas/note.schema.ts';\n"
+      );
+      expect(issues.some((i) => i.includes('.js'))).toBe(true);
+    });
+
+    it('should reject imports without .js extension', () => {
+      const issues = checkCodePatterns(
+        'src/routes/note.routes.ts',
+        "import { NoteSchema } from '../schemas/note.schema';\n"
+      );
+      expect(issues.some((i) => i.includes('.js'))).toBe(true);
+    });
+
+    it('should accept correct .js extension imports', () => {
+      const content = `import { NoteSchema } from '../schemas/note.schema.js';
+import { z } from 'zod';
+`;
+      const issues = checkCodePatterns('src/routes/note.routes.ts', content);
+      expect(issues).toHaveLength(0);
+    });
+  });
+
+  describe('route-specific checks', () => {
+    it('should reject authMiddleware import in route files', () => {
+      const issues = checkCodePatterns(
+        'src/routes/note.routes.ts',
+        "import { authMiddleware } from '../middleware/auth.js';\n"
+      );
+      expect(issues.some((i) => i.includes('authMiddleware'))).toBe(true);
+    });
+
+    it('should not flag authMiddleware in non-route files', () => {
+      const issues = checkCodePatterns(
+        'src/index.ts',
+        "import { authMiddleware } from './middleware/auth.js';\n"
+      );
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should reject try/catch in route files', () => {
+      const content = `userRouter.openapi(route, async (c) => {
+  try {
+    const user = await service.findById(id);
+  } catch (err) {
+    return c.json({ error: 'fail' }, 500);
+  }
+});
+`;
+      const issues = checkCodePatterns('src/routes/note.routes.ts', content);
+      expect(issues.some((i) => i.includes('try/catch'))).toBe(true);
+    });
+
+    it('should not flag try/catch in service files', () => {
+      const content = `async findById(id: string) {
+  try {
+    return await Model.findById(id);
+  } catch (err) {
+    throw new AppError(500, 'DB_ERROR', 'Database error');
+  }
+}
+`;
+      const issues = checkCodePatterns('src/services/note.service.ts', content);
+      expect(issues).toHaveLength(0);
+    });
+  });
+
+  describe('newline check', () => {
+    it('should reject files without trailing newline', () => {
+      const issues = checkCodePatterns('src/schemas/note.schema.ts', 'export const x = 1;');
+      expect(issues.some((i) => i.includes('newline'))).toBe(true);
+    });
+
+    it('should accept files with trailing newline', () => {
+      const issues = checkCodePatterns('src/schemas/note.schema.ts', 'export const x = 1;\n');
+      expect(issues).toHaveLength(0);
+    });
   });
 });
 

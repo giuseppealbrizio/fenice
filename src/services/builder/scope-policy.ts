@@ -121,6 +121,85 @@ export function scanContentForDangerousPatterns(content: string): string[] {
   return violations;
 }
 
+// ---------------------------------------------------------------------------
+// Code pattern checker — catches common LLM mistakes DURING the tool loop
+// so Claude can fix them immediately (same turn, zero cost)
+// ---------------------------------------------------------------------------
+
+interface PatternRule {
+  /** Regex to detect the anti-pattern */
+  pattern: RegExp;
+  /** Human-readable fix instruction returned to Claude */
+  fix: string;
+  /** Optional: only apply to files matching this glob-like prefix */
+  filePrefix?: string;
+}
+
+const CODE_PATTERN_RULES: PatternRule[] = [
+  // Zod v4 API mistakes
+  {
+    pattern: /z\.string\(\)\.email\(\)/,
+    fix: 'Use z.email() instead of z.string().email() — this is Zod v4',
+  },
+  {
+    pattern: /z\.string\(\)\.url\(\)/,
+    fix: 'Use z.url() instead of z.string().url() — this is Zod v4',
+  },
+  {
+    pattern: /z\.string\(\)\.datetime\(\)/,
+    fix: 'Use z.iso.datetime() instead of z.string().datetime() — this is Zod v4',
+  },
+  {
+    pattern: /z\.string\(\)\.isoDatetime\(\)/,
+    fix: 'Use z.iso.datetime() instead of z.string().isoDatetime() — this is Zod v4',
+  },
+  // Import extension check — local imports must end in .js
+  {
+    pattern: /from\s+['"]\.\.?\/.+\.ts['"]/,
+    fix: "Local imports must use .js extension, not .ts: import { foo } from './bar.js'",
+  },
+  {
+    pattern: /from\s+['"]\.\.?\/[^'"]+(?<!\.js)['"]/,
+    fix: "Local imports must end in .js extension: import { foo } from './bar.js'",
+  },
+  // Route-specific patterns
+  {
+    pattern: /import\s+.*authMiddleware/,
+    fix: "Do NOT import authMiddleware in route files. Auth is applied globally in src/index.ts. Access auth context via c.get('userId'), c.get('email'), c.get('role').",
+    filePrefix: 'src/routes/',
+  },
+  {
+    pattern: /\btry\s*\{[\s\S]*?\bcatch\s*\(/,
+    fix: 'Do NOT use try/catch in route handlers. Errors thrown from services are caught by the global error handler in src/index.ts.',
+    filePrefix: 'src/routes/',
+  },
+  // Missing newline at end of file
+  {
+    pattern: /[^\n]$/,
+    fix: 'File must end with a newline character.',
+  },
+];
+
+/**
+ * Checks generated file content against known anti-patterns.
+ * Returns an array of fix instructions — empty if content is clean.
+ * Called inside the write_file tool handler so Claude gets immediate feedback.
+ */
+export function checkCodePatterns(filePath: string, content: string): string[] {
+  const issues: string[] = [];
+
+  for (const rule of CODE_PATTERN_RULES) {
+    if (rule.filePrefix && !filePath.startsWith(rule.filePrefix)) {
+      continue;
+    }
+    if (rule.pattern.test(content)) {
+      issues.push(rule.fix);
+    }
+  }
+
+  return issues;
+}
+
 export function validateGeneratedFiles(files: BuilderGeneratedFile[]): ScopePolicyViolation[] {
   const violations: ScopePolicyViolation[] = [];
 

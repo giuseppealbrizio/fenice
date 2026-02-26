@@ -50,7 +50,7 @@ describe('generateCode', () => {
           name: 'write_file',
           input: {
             path: 'src/schemas/product.schema.ts',
-            content: "import { z } from 'zod';\nexport const ProductSchema = z.object({});",
+            content: "import { z } from 'zod';\nexport const ProductSchema = z.object({});\n",
           },
         },
       ],
@@ -197,7 +197,7 @@ describe('generateCode', () => {
           name: 'modify_file',
           input: {
             path: 'src/index.ts',
-            content: 'export const app = new OpenAPIHono();\n// modified',
+            content: 'export const app = new OpenAPIHono();\n// modified\n',
           },
         },
       ],
@@ -263,7 +263,7 @@ describe('generateCode', () => {
           name: 'write_file',
           input: {
             path: 'src/schemas/product.schema.ts',
-            content: 'export const ProductSchema = z.object({});',
+            content: 'export const ProductSchema = z.object({});\n',
           },
         },
         {
@@ -272,7 +272,7 @@ describe('generateCode', () => {
           name: 'write_file',
           input: {
             path: 'src/models/product.model.ts',
-            content: 'export const ProductModel = mongoose.model("Product");',
+            content: 'export const ProductModel = mongoose.model("Product");\n',
           },
         },
       ],
@@ -434,7 +434,14 @@ describe('generateCode with plan constraint', () => {
       usage: { input_tokens: 100, output_tokens: 20 },
     });
 
-    await generateCode('Add a products endpoint', mockContext, '/project', 'sk-test-key', undefined, plan);
+    await generateCode(
+      'Add a products endpoint',
+      mockContext,
+      '/project',
+      'sk-test-key',
+      undefined,
+      plan
+    );
 
     const firstCallArgs = mockCreate.mock.calls[0] as Record<string, unknown>[];
     const messages = (firstCallArgs[0] as { messages: { content: string }[] }).messages;
@@ -473,7 +480,7 @@ describe('repairCode', () => {
           input: {
             path: 'src/schemas/product.schema.ts',
             content:
-              "import { z } from 'zod';\nexport const ProductSchema = z.object({ id: z.string() });",
+              "import { z } from 'zod';\nexport const ProductSchema = z.object({ id: z.string() });\n",
           },
         },
       ],

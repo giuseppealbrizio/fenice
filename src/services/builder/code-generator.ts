@@ -20,6 +20,7 @@ import {
   validateFilePath,
   validateReadPath,
   scanContentForDangerousPatterns,
+  checkCodePatterns,
   type ScopePolicyViolation,
 } from './scope-policy.js';
 import { AppError } from '../../utils/errors.js';
@@ -162,6 +163,17 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
             continue;
           }
 
+          const codeIssues = checkCodePatterns(path, content);
+          if (codeIssues.length > 0) {
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `REJECTED: Fix these issues and rewrite the file:\n${codeIssues.map((i) => `- ${i}`).join('\n')}`,
+              is_error: true,
+            });
+            continue;
+          }
+
           files.push({ path, content, action: 'created' });
           createdPaths.add(path);
           toolResults.push({
@@ -207,6 +219,17 @@ async function runToolLoop(config: ToolLoopConfig): Promise<GenerationResult> {
               type: 'tool_result',
               tool_use_id: block.id,
               content: `ERROR: Content policy violation: ${contentViolations.join('; ')}`,
+              is_error: true,
+            });
+            continue;
+          }
+
+          const modifyCodeIssues = checkCodePatterns(path, content);
+          if (modifyCodeIssues.length > 0) {
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: block.id,
+              content: `REJECTED: Fix these issues and rewrite the file:\n${modifyCodeIssues.map((i) => `- ${i}`).join('\n')}`,
               is_error: true,
             });
             continue;
