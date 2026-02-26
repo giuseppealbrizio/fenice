@@ -18,6 +18,8 @@ Your job is to generate production-ready API endpoints based on the user's promp
 - Include proper error handling using AppError subclasses from ../utils/errors.js
 - Include proper TypeScript types — no \`any\`
 - Use the tools provided to write each file
+- ONLY create or modify files listed in the approved plan. Do NOT touch any other files — attempts to write outside the plan will be rejected and waste a tool call.
+- Do NOT modify utility files (src/utils/*), middleware, or shared infrastructure unless they are explicitly in the plan.
 `;
 
 export const TASK_PROMPTS: Record<TaskType, string> = {
