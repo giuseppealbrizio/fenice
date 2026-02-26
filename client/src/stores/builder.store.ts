@@ -4,6 +4,10 @@ import type {
   BuilderGeneratedFile,
   BuilderProgressPayload,
   BuilderPlanFile,
+  TaskType,
+  DiffEntry,
+  PlanCoverage,
+  BuilderJobResult,
 } from '../types/builder';
 
 const MAX_LOGS = 50;
@@ -21,12 +25,22 @@ interface BuilderState {
   submitting: boolean;
   plan: BuilderPlanFile[] | null;
   summary: string | null;
+  taskType: TaskType;
+  diffs: DiffEntry[] | null;
+  planCoverage: PlanCoverage | null;
+  impactedFiles: string[] | null;
+  validationErrors: string[] | null;
+  prUrl: string | null;
+  prNumber: number | null;
+  branch: string | null;
 
   setExpanded: (expanded: boolean) => void;
   toggleExpanded: () => void;
   setPrompt: (prompt: string) => void;
   setDryRun: (dryRun: boolean) => void;
   setSubmitting: (submitting: boolean) => void;
+  setTaskType: (taskType: TaskType) => void;
+  setFullResult: (result: BuilderJobResult) => void;
   startJob: (jobId: string) => void;
   applyProgress: (payload: BuilderProgressPayload) => void;
   setResult: (files: BuilderGeneratedFile[]) => void;
@@ -51,6 +65,14 @@ const initialState = {
   submitting: false,
   plan: null as BuilderPlanFile[] | null,
   summary: null as string | null,
+  taskType: 'new-resource' as TaskType,
+  diffs: null as DiffEntry[] | null,
+  planCoverage: null as PlanCoverage | null,
+  impactedFiles: null as string[] | null,
+  validationErrors: null as string[] | null,
+  prUrl: null as string | null,
+  prNumber: null as number | null,
+  branch: null as string | null,
 };
 
 export const useBuilderStore = create<BuilderState>((set, get) => ({
@@ -61,6 +83,22 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   setPrompt: (prompt) => set({ prompt }),
   setDryRun: (dryRun) => set({ dryRun }),
   setSubmitting: (submitting) => set({ submitting }),
+
+  setTaskType: (taskType) => set({ taskType }),
+
+  setFullResult: (result) =>
+    set({
+      files: result.files,
+      status: result.validationPassed === false ? 'completed_draft' : 'completed',
+      submitting: false,
+      diffs: result.diffs ?? null,
+      planCoverage: result.planCoverage ?? null,
+      impactedFiles: result.impactedFiles ?? null,
+      validationErrors: result.validationErrors ?? null,
+      prUrl: result.prUrl ?? null,
+      prNumber: result.prNumber ?? null,
+      branch: result.branch ?? null,
+    }),
 
   startJob: (jobId) =>
     set({
@@ -73,6 +111,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       submitting: false,
       plan: null,
       summary: null,
+      diffs: null,
+      planCoverage: null,
+      impactedFiles: null,
+      validationErrors: null,
+      prUrl: null,
+      prNumber: null,
+      branch: null,
     }),
 
   applyProgress: (payload) => {
@@ -108,6 +153,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       error: null,
       plan: null,
       summary: null,
+      diffs: null,
+      planCoverage: null,
+      impactedFiles: null,
+      validationErrors: null,
+      prUrl: null,
+      prNumber: null,
+      branch: null,
     }),
 
   reset: () => set(initialState),

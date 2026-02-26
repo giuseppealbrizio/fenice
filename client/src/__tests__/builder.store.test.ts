@@ -243,7 +243,7 @@ describe('useBuilderStore', () => {
       startJob('job-1');
       setPlan(
         [{ path: 'a.ts', type: 'schema' as const, action: 'create' as const, description: 'A' }],
-        'Summary',
+        'Summary'
       );
       dismiss();
       const state = useBuilderStore.getState();
@@ -259,6 +259,132 @@ describe('useBuilderStore', () => {
       expect(state.status).toBe('plan_ready');
       // Plan itself comes from REST fetch, not from delta payload
       expect(state.plan).toBeNull();
+    });
+  });
+
+  describe('taskType', () => {
+    it('should default to new-resource', () => {
+      expect(useBuilderStore.getState().taskType).toBe('new-resource');
+    });
+
+    it('should update via setTaskType', () => {
+      const { setTaskType } = useBuilderStore.getState();
+      setTaskType('refactor');
+      expect(useBuilderStore.getState().taskType).toBe('refactor');
+    });
+
+    it('should reset taskType to default', () => {
+      const { setTaskType, reset } = useBuilderStore.getState();
+      setTaskType('bugfix');
+      reset();
+      expect(useBuilderStore.getState().taskType).toBe('new-resource');
+    });
+  });
+
+  describe('setFullResult with M5 fields', () => {
+    it('should extract diffs from result', () => {
+      const { startJob, setFullResult } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [{ path: 'src/test.ts', content: 'x', action: 'created' }],
+        diffs: [{ path: 'src/test.ts', diff: '+hello' }],
+      });
+      expect(useBuilderStore.getState().diffs).toEqual([{ path: 'src/test.ts', diff: '+hello' }]);
+    });
+
+    it('should extract planCoverage from result', () => {
+      const { startJob, setFullResult } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [],
+        planCoverage: { planned: ['a.ts'], generated: ['a.ts'], missing: [] },
+      });
+      expect(useBuilderStore.getState().planCoverage).toEqual({
+        planned: ['a.ts'],
+        generated: ['a.ts'],
+        missing: [],
+      });
+    });
+
+    it('should extract impactedFiles from result', () => {
+      const { startJob, setFullResult } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [],
+        impactedFiles: ['src/other.ts'],
+      });
+      expect(useBuilderStore.getState().impactedFiles).toEqual(['src/other.ts']);
+    });
+
+    it('should extract prUrl and prNumber from result', () => {
+      const { startJob, setFullResult } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [],
+        prUrl: 'https://github.com/formray/fenice/pull/42',
+        prNumber: 42,
+        branch: 'builder/job-1-test',
+      });
+      const state = useBuilderStore.getState();
+      expect(state.prUrl).toBe('https://github.com/formray/fenice/pull/42');
+      expect(state.prNumber).toBe(42);
+      expect(state.branch).toBe('builder/job-1-test');
+    });
+
+    it('should extract validationErrors for completed_draft', () => {
+      const { startJob, setFullResult } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [],
+        validationPassed: false,
+        validationErrors: ['typecheck: TS2345', 'lint: 3 errors'],
+      });
+      const state = useBuilderStore.getState();
+      expect(state.validationErrors).toEqual(['typecheck: TS2345', 'lint: 3 errors']);
+    });
+
+    it('should set status to completed_draft when validationPassed is false', () => {
+      const { startJob, setFullResult } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [{ path: 'a.ts', content: 'x', action: 'created' }],
+        validationPassed: false,
+        validationErrors: ['error'],
+      });
+      expect(useBuilderStore.getState().status).toBe('completed_draft');
+    });
+
+    it('should clear M5 fields on dismiss', () => {
+      const { startJob, setFullResult, dismiss } = useBuilderStore.getState();
+      startJob('job-1');
+      setFullResult({
+        files: [],
+        diffs: [{ path: 'a.ts', diff: '+x' }],
+        planCoverage: { planned: ['a.ts'], generated: [], missing: ['a.ts'] },
+        impactedFiles: ['b.ts'],
+        prUrl: 'url',
+        prNumber: 1,
+        branch: 'br',
+        validationErrors: ['err'],
+      });
+      dismiss();
+      const s = useBuilderStore.getState();
+      expect(s.diffs).toBeNull();
+      expect(s.planCoverage).toBeNull();
+      expect(s.impactedFiles).toBeNull();
+      expect(s.prUrl).toBeNull();
+      expect(s.prNumber).toBeNull();
+      expect(s.branch).toBeNull();
+      expect(s.validationErrors).toBeNull();
+    });
+  });
+
+  describe('applyProgress with completed_draft', () => {
+    it('should update status to completed_draft', () => {
+      const { startJob, applyProgress } = useBuilderStore.getState();
+      startJob('job-1');
+      applyProgress({ jobId: 'job-1', status: 'completed_draft', message: 'Draft PR created' });
+      expect(useBuilderStore.getState().status).toBe('completed_draft');
     });
   });
 
