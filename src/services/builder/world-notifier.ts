@@ -14,8 +14,10 @@ const STATUS_MESSAGES: Record<BuilderJobStatus, string> = {
   writing_files: 'Writing generated files to disk',
   validating: 'Running validation (lint + typecheck + test)',
   creating_pr: 'Creating pull request on GitHub',
+  committing: 'Committing changes directly to main',
   completed: 'Pipeline completed successfully',
   completed_draft: 'Pipeline completed as draft (validation issues)',
+  rolled_back: 'Direct commit rolled back due to failure',
   failed: 'Pipeline failed',
   rejected: 'Plan rejected by user',
 };

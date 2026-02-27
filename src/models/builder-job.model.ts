@@ -18,7 +18,11 @@ const generatedFileSchema = new Schema(
 const planFileSchema = new Schema(
   {
     path: { type: String, required: true },
-    type: { type: String, required: true, enum: ['schema', 'model', 'service', 'route', 'test'] },
+    type: {
+      type: String,
+      required: true,
+      enum: ['schema', 'model', 'service', 'route', 'test', 'config', 'middleware'],
+    },
     action: { type: String, required: true, enum: ['create', 'modify'] },
     description: { type: String, required: true },
   },
@@ -66,6 +70,7 @@ const jobResultSchema = new Schema(
     prUrl: String,
     prNumber: Number,
     branch: String,
+    commitHash: String,
     validationPassed: Boolean,
     validationErrors: { type: [String], default: undefined },
     tokenUsage: { type: tokenUsageSchema },
@@ -104,6 +109,7 @@ const builderJobSchema = new Schema<BuilderJobDocument>(
       includeModel: { type: Boolean, default: true },
       includeTests: { type: Boolean, default: true },
       taskType: { type: String, enum: TaskTypeEnum.options },
+      integrationMode: { type: String, enum: ['pr', 'direct'], default: 'pr' },
     },
     plan: { type: planSchema, default: undefined },
     result: { type: jobResultSchema },
