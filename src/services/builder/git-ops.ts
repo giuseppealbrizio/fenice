@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { simpleGit, type SimpleGit } from 'simple-git';
@@ -209,6 +209,8 @@ export async function createWorktree(
   const worktreeDir = await mkdtemp(join(tmpdir(), 'fenice-builder-'));
 
   await git.raw(['worktree', 'add', '-b', branch, worktreeDir, 'HEAD']);
+  // Symlink node_modules so tsc/eslint/vitest can resolve dependencies
+  await symlink(join(projectRoot, 'node_modules'), join(worktreeDir, 'node_modules'), 'junction');
   logger.info({ branch, worktreePath: worktreeDir }, 'Created builder worktree');
 
   return { worktreePath: worktreeDir, branch };
@@ -228,6 +230,7 @@ export async function createDraftWorktree(
   const worktreeDir = await mkdtemp(join(tmpdir(), 'fenice-builder-draft-'));
 
   await git.raw(['worktree', 'add', '-b', branch, worktreeDir, 'HEAD']);
+  await symlink(join(projectRoot, 'node_modules'), join(worktreeDir, 'node_modules'), 'junction');
   logger.info({ branch, worktreePath: worktreeDir }, 'Created draft worktree');
 
   return { worktreePath: worktreeDir, branch };

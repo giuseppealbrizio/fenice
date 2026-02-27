@@ -27,6 +27,7 @@ vi.mock('simple-git', () => ({
 vi.mock('node:fs/promises', () => ({
   mkdtemp: vi.fn().mockResolvedValue('/tmp/fenice-builder-abc123'),
   rm: vi.fn().mockResolvedValue(undefined),
+  symlink: vi.fn().mockResolvedValue(undefined),
 }));
 
 const {
