@@ -616,12 +616,13 @@ export async function repairCode(
   originalFiles: BuilderGeneratedFile[],
   validationErrors: string,
   projectRoot: string,
-  apiKey: string
+  apiKey: string,
+  planPaths?: Set<string>
 ): Promise<GenerationResult> {
   const client = new Anthropic({ apiKey });
 
-  // Restrict repair to only files that were originally generated
-  const allowedPlanPaths = new Set(originalFiles.map((f) => f.path));
+  // Allow repair to touch originally generated files + all plan-approved paths
+  const allowedPlanPaths = new Set([...originalFiles.map((f) => f.path), ...(planPaths ?? [])]);
 
   const filesListing = originalFiles
     .map((f) => `### ${f.path}\n\`\`\`typescript\n${f.content}\n\`\`\``)

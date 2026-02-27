@@ -228,11 +228,11 @@ export class BuilderService {
         'Planning'
       );
 
-      // Auto-include src/index.ts when plan creates new route files.
+      // Auto-include src/index.ts when plan has ANY route file (create or modify).
       // Without this, new routes are dead code — they must be mounted in the Hono app.
-      const hasNewRoute = plan.files.some((f) => f.type === 'route' && f.action === 'create');
+      const hasRoute = plan.files.some((f) => f.type === 'route');
       const alreadyIncludesIndex = plan.files.some((f) => f.path === 'src/index.ts');
-      if (hasNewRoute && !alreadyIncludesIndex) {
+      if (hasRoute && !alreadyIncludesIndex) {
         plan.files.push({
           path: 'src/index.ts',
           type: 'config',
@@ -399,7 +399,7 @@ export class BuilderService {
           logger.warn({ jobId, attempt }, 'Validation failed, attempting repair');
           const errorSummary = formatValidationErrors(validation);
           const repairResult = await withTimeout(
-            repairCode(currentFiles, errorSummary, wtPath, apiKey),
+            repairCode(currentFiles, errorSummary, wtPath, apiKey, planApprovedPaths),
             PIPELINE_TIMEOUT_MS,
             'Repair'
           );
