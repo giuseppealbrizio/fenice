@@ -7,6 +7,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { userRouter } from './routes/user.routes.js';
+import { employeeRouter } from './routes/employee.routes.js';
 import { mcpRouter } from './routes/mcp.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 import { builderRouter } from './routes/builder.routes.js';
@@ -72,6 +73,7 @@ app.use('/api/v1/*', rateLimiter());
 
 // Auth middleware — applied to protected routes only
 app.use('/api/v1/users/*', authMiddleware);
+app.use('/api/v1/employees/*', authMiddleware);
 app.use('/api/v1/auth/logout', authMiddleware);
 app.use('/api/v1/upload/*', authMiddleware);
 app.use('/api/v1/upload/*', rateLimiter({ windowMs: 60_000, max: 5 }));
@@ -89,6 +91,7 @@ app.post(
 app.route('/api/v1', healthRouter);
 app.route('/api/v1', authRouter);
 app.route('/api/v1', userRouter);
+app.route('/api/v1', employeeRouter);
 app.route('/api/v1', mcpRouter);
 app.route('/api/v1', uploadRouter);
 app.route('/api/v1', builderRouter);
@@ -111,7 +114,7 @@ app.doc('/openapi', {
     description:
       'AI-native, production-ready backend API — Formray Engineering Guidelines compliant',
   },
-  servers: [{ url: 'http://localhost:3000' }],
+  servers: [{ url: 'http://localhost:3100' }],
 });
 
 // --- Scalar interactive docs ---
