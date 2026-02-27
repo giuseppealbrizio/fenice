@@ -39,3 +39,44 @@ export function buildUserFilter(params: UserFilterParams): Record<string, unknow
 
   return filter;
 }
+
+interface NoteFilterParams {
+  search?: string | undefined;
+  isPinned?: boolean | undefined;
+  tags?: string | undefined;
+  createdAfter?: string | undefined;
+  createdBefore?: string | undefined;
+}
+
+export function buildNoteFilter(params: NoteFilterParams): Record<string, unknown> {
+  const filter: Record<string, unknown> = {};
+
+  if (params.search) {
+    const regex = new RegExp(params.search, 'i');
+    filter['$or'] = [
+      { title: { $regex: regex } },
+      { content: { $regex: regex } },
+    ];
+  }
+
+  if (params.isPinned !== undefined) {
+    filter['isPinned'] = params.isPinned;
+  }
+
+  if (params.tags) {
+    filter['tags'] = { $in: [params.tags] };
+  }
+
+  if (params.createdAfter || params.createdBefore) {
+    const dateFilter: Record<string, Date> = {};
+    if (params.createdAfter) {
+      dateFilter['$gte'] = new Date(params.createdAfter);
+    }
+    if (params.createdBefore) {
+      dateFilter['$lte'] = new Date(params.createdBefore);
+    }
+    filter['createdAt'] = dateFilter;
+  }
+
+  return filter;
+}
