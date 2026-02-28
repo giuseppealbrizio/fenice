@@ -283,6 +283,43 @@ const rejectRoute = createRoute({
   },
 });
 
+const rollbackRoute = createRoute({
+  method: 'post',
+  path: '/builder/jobs/{id}/rollback',
+  tags: ['Builder'],
+  summary: 'Rollback a direct-mode builder job (git revert)',
+  security: [{ Bearer: [] }],
+  request: {
+    params: z.object({ id: z.string().min(1) }),
+  },
+  responses: {
+    200: {
+      description: 'Job rolled back',
+      content: { 'application/json': { schema: z.object({ status: z.literal('rolled_back') }) } },
+    },
+    400: {
+      description: 'Invalid state or not a direct-mode job',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Not authenticated',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Job not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    503: {
+      description: 'Builder disabled',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+  },
+});
+
 // --- Router ---
 
 export const builderRouter = new OpenAPIHono<AuthEnv>();
@@ -292,6 +329,7 @@ builderRouter.post('/builder/generate', requireRole('admin'));
 builderRouter.get('/builder/jobs', requireRole('admin'));
 builderRouter.post('/builder/jobs/:id/approve', requireRole('admin'));
 builderRouter.post('/builder/jobs/:id/reject', requireRole('admin'));
+builderRouter.post('/builder/jobs/:id/rollback', requireRole('admin'));
 
 builderRouter.openapi(generateRoute, async (c) => {
   checkBuilderEnabled();
@@ -343,4 +381,11 @@ builderRouter.openapi(rejectRoute, async (c) => {
   const { id } = c.req.valid('param');
   await getBuilderService().reject(id);
   return c.json({ status: 'rejected' as const }, 200);
+});
+
+builderRouter.openapi(rollbackRoute, async (c) => {
+  checkBuilderEnabled();
+  const { id } = c.req.valid('param');
+  await getBuilderService().rollback(id);
+  return c.json({ status: 'rolled_back' as const }, 200);
 });

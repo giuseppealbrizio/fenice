@@ -9,8 +9,10 @@ export const BuilderJobStatusEnum = z.enum([
   'writing_files',
   'validating',
   'creating_pr',
+  'committing',
   'completed',
   'completed_draft',
+  'rolled_back',
   'failed',
   'rejected',
 ]);
@@ -31,6 +33,7 @@ export const BuilderOptionsSchema = z
     includeModel: z.boolean().default(true),
     includeTests: z.boolean().default(true),
     taskType: TaskTypeEnum.optional(),
+    integrationMode: z.enum(['pr', 'direct']).default('pr'),
   })
   .strict();
 
@@ -50,6 +53,7 @@ export const BuilderJobResultSchema = z.object({
   prUrl: z.string().optional(),
   prNumber: z.number().int().positive().optional(),
   branch: z.string().optional(),
+  commitHash: z.string().optional(),
   validationPassed: z.boolean().optional(),
   validationErrors: z.array(z.string()).optional(),
   tokenUsage: z

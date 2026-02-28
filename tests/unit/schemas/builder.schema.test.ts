@@ -439,6 +439,42 @@ describe('BuilderPlanSchema with contextFiles and taskType (Task 2)', () => {
   });
 });
 
+describe('BuilderJobStatusEnum with committing and rolled_back', () => {
+  it('should accept committing status', () => {
+    expect(() => BuilderJobStatusEnum.parse('committing')).not.toThrow();
+  });
+
+  it('should accept rolled_back status', () => {
+    expect(() => BuilderJobStatusEnum.parse('rolled_back')).not.toThrow();
+  });
+});
+
+describe('BuilderOptionsSchema with integrationMode', () => {
+  it('should default integrationMode to pr', () => {
+    const result = BuilderOptionsSchema.parse({});
+    expect(result.integrationMode).toBe('pr');
+  });
+
+  it('should accept direct integrationMode', () => {
+    const result = BuilderOptionsSchema.parse({ integrationMode: 'direct' });
+    expect(result.integrationMode).toBe('direct');
+  });
+
+  it('should reject invalid integrationMode', () => {
+    expect(() => BuilderOptionsSchema.parse({ integrationMode: 'yolo' })).toThrow();
+  });
+});
+
+describe('BuilderJobResultSchema with commitHash', () => {
+  it('should accept commitHash field', () => {
+    const result = BuilderJobResultSchema.parse({
+      files: [],
+      commitHash: 'abc123def456',
+    });
+    expect(result.commitHash).toBe('abc123def456');
+  });
+});
+
 describe('BuilderJobStatusEnum with completed_draft (Task 3)', () => {
   it('should accept completed_draft status', () => {
     expect(() => BuilderJobStatusEnum.parse('completed_draft')).not.toThrow();
