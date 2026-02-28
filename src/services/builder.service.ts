@@ -431,7 +431,14 @@ export class BuilderService {
           logger.warn({ jobId, attempt }, 'Validation failed, attempting repair');
           const errorSummary = formatValidationErrors(validation);
           const repairResult = await withTimeout(
-            repairCode(currentFiles, errorSummary, wtPath, apiKey, planApprovedPaths),
+            repairCode(
+              currentFiles,
+              errorSummary,
+              wtPath,
+              apiKey,
+              planApprovedPaths,
+              plan.taskType
+            ),
             PIPELINE_TIMEOUT_MS,
             'Repair'
           );

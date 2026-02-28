@@ -6,13 +6,12 @@ import { tmpdir } from 'node:os';
 import type { BuilderGeneratedFile, BuilderPlan } from '../../schemas/builder.schema.js';
 import { BuilderPlanSchema } from '../../schemas/builder.schema.js';
 import {
-  BUILDER_SYSTEM_PROMPT,
-  BUILDER_PLAN_PROMPT,
   BUILDER_TOOLS,
   buildPlanConstraint,
   buildPlanPrompt,
   buildSystemPrompt,
 } from './prompt-templates.js';
+import type { TaskType } from '../../schemas/builder.schema.js';
 import {
   formatContextForPrompt,
   formatContextForGeneration,
@@ -522,7 +521,7 @@ export async function generatePlan(
   const client = new Anthropic({ apiKey });
 
   const contextText = formatContextForPrompt(context);
-  const planPrompt = fileIndex ? buildPlanPrompt(fileIndex) : BUILDER_PLAN_PROMPT;
+  const planPrompt = buildPlanPrompt(fileIndex ?? '');
   const userMessage = `${contextText}\n\n## User Request\n\n${prompt}`;
 
   let response: Anthropic.Message;
@@ -592,7 +591,7 @@ export async function generateCode(
   const planConstraint = plan ? buildPlanConstraint(plan) : '';
   const userMessage = `${contextText}\n\n${planConstraint}## User Request\n\n${prompt}\n\nGenerate all necessary files using the tools provided. Create complete, production-ready code following the project conventions shown above.`;
 
-  const systemPrompt = plan?.taskType ? buildSystemPrompt(plan.taskType) : BUILDER_SYSTEM_PROMPT;
+  const systemPrompt = buildSystemPrompt(plan?.taskType ?? 'new-resource');
   const allowedPlanPaths = plan ? new Set(plan.files.map((f) => f.path)) : undefined;
 
   // Create a validation worktree so in-loop tsc/eslint writes don't touch the main checkout.
@@ -619,7 +618,8 @@ export async function repairCode(
   validationErrors: string,
   projectRoot: string,
   apiKey: string,
-  planPaths?: Set<string>
+  planPaths?: Set<string>,
+  taskType?: TaskType
 ): Promise<GenerationResult> {
   const client = new Anthropic({ apiKey });
 
@@ -644,7 +644,7 @@ Fix the issues and rewrite ALL files using the tools. Follow the same project co
 
   return runToolLoop({
     client,
-    systemPrompt: BUILDER_SYSTEM_PROMPT,
+    systemPrompt: buildSystemPrompt(taskType ?? 'new-resource'),
     userMessage,
     projectRoot,
     allowedPlanPaths,

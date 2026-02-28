@@ -64,6 +64,8 @@ For every new resource with filter/search capabilities:
 - Create a \`build<Resource>Filter()\` function in \`src/utils/query-builder.ts\` (or a new file if query-builder.ts is not in the plan)
 - The function takes typed filter params and returns a MongoDB filter object
 - Use \`escapeRegex()\` for any search fields passed to \`new RegExp()\`
+- Treat empty strings the same as undefined — skip the filter (do NOT create a \`$or\` for an empty search)
+- In tests, expect NO filter when search is an empty string
 - Add the query builder file to the plan and generate unit tests for it
 
 ## Test Requirements
@@ -164,9 +166,6 @@ Generate or update documentation. Key guidelines:
 export function buildSystemPrompt(taskType: TaskType): string {
   return BUILDER_BASE_PROMPT + TASK_PROMPTS[taskType];
 }
-
-/** @deprecated Use buildSystemPrompt(taskType) instead */
-export const BUILDER_SYSTEM_PROMPT = buildSystemPrompt('new-resource');
 
 export interface ToolDefinition {
   name: string;
@@ -293,9 +292,6 @@ Rules:
 - Output ONLY the JSON object, no markdown fences, no explanation
 `;
 }
-
-/** @deprecated Use buildPlanPrompt(fileIndex) instead */
-export const BUILDER_PLAN_PROMPT = buildPlanPrompt('');
 
 export function buildPlanConstraint(plan: {
   files: { path: string; action: string; description: string }[];
