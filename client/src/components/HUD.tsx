@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { useWorldStore } from '../stores/world.store';
 import { useViewStore } from '../stores/view.store';
 import { METHOD_COLORS, METHOD_LABELS, LINK_STATE_COLORS } from '../utils/colors';
@@ -64,6 +65,49 @@ const HUD_THEME = {
   },
 } as const;
 
+function FpsCounter(): React.JSX.Element {
+  const [fps, setFps] = useState(0);
+  const frames = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  useEffect(() => {
+    let rafId: number;
+    const loop = () => {
+      frames.current++;
+      const now = performance.now();
+      if (now - lastTime.current >= 1000) {
+        setFps(frames.current);
+        frames.current = 0;
+        lastTime.current = now;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  const color = fps >= 55 ? '#50c878' : fps >= 30 ? '#ffd700' : '#ff6b6b';
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        backgroundColor: 'rgba(0, 0, 8, 0.75)',
+        border: '1px solid rgba(0, 229, 255, 0.15)',
+        borderRadius: '8px',
+        padding: '4px 10px',
+        fontVariantNumeric: 'tabular-nums',
+        pointerEvents: 'none',
+      }}
+    >
+      <span style={{ fontSize: '12px', fontWeight: 700, color }}>{fps}</span>
+      <span style={{ fontSize: '10px', color: '#6f7ca3', marginLeft: '4px' }}>FPS</span>
+    </div>
+  );
+}
+
 export function HUD(): React.JSX.Element {
   const loading = useWorldStore((s) => s.loading);
   const connected = useWorldStore((s) => s.connected);
@@ -87,6 +131,7 @@ export function HUD(): React.JSX.Element {
         position: 'absolute',
         top: 0,
         left: 0,
+        right: 0,
         padding: '16px',
         pointerEvents: 'none',
         userSelect: 'none',
@@ -430,6 +475,7 @@ export function HUD(): React.JSX.Element {
           <div style={{ marginTop: '4px' }}>Switch to Endpoint Debug for per-endpoint detail.</div>
         </div>
       </div>
+      <FpsCounter />
     </div>
   );
 }
