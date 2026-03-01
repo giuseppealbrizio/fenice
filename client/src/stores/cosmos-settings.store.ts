@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import { COSMOS_LAYOUT, SERVICE_STAR, ENDPOINT_PLANET, CURVED_ROUTE } from '../utils/cosmos';
+import {
+  COSMOS_LAYOUT,
+  SERVICE_STAR,
+  ENDPOINT_PLANET,
+  CURVED_ROUTE,
+  CAMERA_NAV,
+} from '../utils/cosmos';
 import {
   BLOOM_CONFIG,
   SSAO_CONFIG,
@@ -42,6 +48,9 @@ export interface CosmosSettings {
   hazeOpacity: number;
   nebulaOpacity: number;
   dustOpacity: number;
+  // Camera
+  autoRotateSpeed: number;
+  cameraDamping: number;
 }
 
 interface CosmosSettingsState extends CosmosSettings {
@@ -75,6 +84,9 @@ const DEFAULTS: CosmosSettings = {
   hazeOpacity: 1.0,
   nebulaOpacity: NEBULA_CONFIG.opacity,
   dustOpacity: DUST_CONFIG.opacity,
+  // Camera
+  autoRotateSpeed: CAMERA_NAV.autoRotateSpeed,
+  cameraDamping: CAMERA_NAV.dampingFactor,
 };
 
 export const COSMOS_DEFAULTS = DEFAULTS;

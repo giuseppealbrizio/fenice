@@ -14,6 +14,7 @@ import { BlendFunction } from 'postprocessing';
 import { City } from './City';
 import { Cosmos } from './Cosmos';
 import { CameraController } from './CameraController';
+import { CinematicCamera } from './CinematicCamera';
 import { CAMERA_NAV, STAR_CHART } from '../utils/cosmos';
 import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
@@ -146,6 +147,8 @@ export function Scene(): React.JSX.Element {
   const showGrid = useViewStore((s) => s.showGrid);
   const sceneMode = useViewStore((s) => s.sceneMode);
   const quality = useViewStore((s) => s.quality);
+  const autoRotateSpeed = useCosmosSettingsStore((s) => s.autoRotateSpeed);
+  const cameraDamping = useCosmosSettingsStore((s) => s.cameraDamping);
   const isDark = visualMode === 'dark';
   const isCosmos = sceneMode === 'cosmos';
   const isStarChart = isCosmos && !isDark;
@@ -230,13 +233,14 @@ export function Scene(): React.JSX.Element {
       <OrbitControls
         makeDefault
         enableDamping
-        dampingFactor={CAMERA_NAV.dampingFactor}
+        dampingFactor={cameraDamping}
         autoRotate={isCosmos && isDark}
-        autoRotateSpeed={CAMERA_NAV.autoRotateSpeed}
+        autoRotateSpeed={autoRotateSpeed}
         minDistance={CAMERA_NAV.minDistance}
         maxDistance={CAMERA_NAV.maxDistance}
       />
       {isCosmos && <CameraController />}
+      <CinematicCamera />
       <SceneEffects isDark={isDark} isStarChart={isStarChart} quality={quality} />
     </Canvas>
   );
