@@ -7,6 +7,8 @@ import {
   Vignette,
   ChromaticAberration,
   Noise,
+  SSAO,
+  DepthOfField,
 } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { City } from './City';
@@ -17,6 +19,7 @@ import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
 import { DustParticles } from './DustParticles';
 import { useViewStore } from '../stores/view.store';
+import type { QualityLevel } from '../stores/view.store';
 import {
   COSMIC_PALETTE,
   SCENE_FOG,
@@ -24,6 +27,8 @@ import {
   CHROMATIC_ABERRATION_CONFIG,
   NOISE_CONFIG,
   COSMIC_LIGHTING,
+  SSAO_CONFIG,
+  DEPTH_OF_FIELD_CONFIG,
 } from '../utils/atmosphere';
 import { useCosmosSettingsStore } from '../stores/cosmos-settings.store';
 
@@ -48,12 +53,17 @@ const SCENE_THEME = {
   },
 } as const;
 
+/** Hoisted to avoid re-creating on every render */
+const SSAO_COLOR = new THREE.Color('#000000');
+
 function SceneEffects({
   isDark,
   isStarChart,
+  quality,
 }: {
   isDark: boolean;
   isStarChart: boolean;
+  quality: QualityLevel;
 }): React.JSX.Element | null {
   const bloomIntensity = useCosmosSettingsStore((s) => s.bloomIntensity);
   const bloomThreshold = useCosmosSettingsStore((s) => s.bloomThreshold);
@@ -65,6 +75,36 @@ function SceneEffects({
     return (
       <EffectComposer>
         <Vignette offset={0.4} darkness={0.5} />
+      </EffectComposer>
+    );
+  }
+
+  if (quality === 'high') {
+    return (
+      <EffectComposer>
+        <Bloom
+          intensity={bloomIntensity}
+          luminanceThreshold={bloomThreshold}
+          luminanceSmoothing={0.8}
+          mipmapBlur
+        />
+        <SSAO
+          radius={SSAO_CONFIG.radius}
+          intensity={SSAO_CONFIG.intensity}
+          luminanceInfluence={SSAO_CONFIG.luminanceInfluence}
+          color={SSAO_COLOR}
+        />
+        <DepthOfField
+          focusDistance={DEPTH_OF_FIELD_CONFIG.focusDistance}
+          focalLength={DEPTH_OF_FIELD_CONFIG.focalLength}
+          bokehScale={DEPTH_OF_FIELD_CONFIG.bokehScale}
+        />
+        <Vignette offset={VIGNETTE_CONFIG.offset} darkness={VIGNETTE_CONFIG.darkness} />
+        <ChromaticAberration
+          offset={new THREE.Vector2(...CHROMATIC_ABERRATION_CONFIG.offset)}
+          blendFunction={BlendFunction.NORMAL}
+        />
+        <Noise opacity={NOISE_CONFIG.opacity} blendFunction={BlendFunction.SOFT_LIGHT} />
       </EffectComposer>
     );
   }
@@ -96,6 +136,7 @@ export function Scene(): React.JSX.Element {
   const visualMode = useViewStore((s) => s.visualMode);
   const showGrid = useViewStore((s) => s.showGrid);
   const sceneMode = useViewStore((s) => s.sceneMode);
+  const quality = useViewStore((s) => s.quality);
   const isDark = visualMode === 'dark';
   const isCosmos = sceneMode === 'cosmos';
   const isStarChart = isCosmos && !isDark;
@@ -180,7 +221,7 @@ export function Scene(): React.JSX.Element {
         maxDistance={CAMERA_NAV.maxDistance}
       />
       {isCosmos && <CameraController />}
-      <SceneEffects isDark={isDark} isStarChart={isStarChart} />
+      <SceneEffects isDark={isDark} isStarChart={isStarChart} quality={quality} />
     </Canvas>
   );
 }

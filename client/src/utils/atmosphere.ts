@@ -91,6 +91,18 @@ export const COSMIC_LIGHTING = {
   keyLightPosition: [15, 25, 15] as [number, number, number],
 } as const;
 
+export const SSAO_CONFIG = {
+  radius: 0.5,
+  intensity: 40,
+  luminanceInfluence: 0.6,
+} as const;
+
+export const DEPTH_OF_FIELD_CONFIG = {
+  focusDistance: 0.02,
+  focalLength: 0.05,
+  bokehScale: 2,
+} as const;
+
 // ─── M4: Atmosphere constants ───────────────────────────────────────────────
 
 export const GROUND_FOG_CONFIG = {

@@ -31,7 +31,7 @@ const initialViewState = {
   sceneMode: 'cosmos' as SceneMode,
   showGrid: false,
   focusTarget: null as [number, number, number] | null,
-  quality: localStorage.getItem('fenice-quality') === 'low' ? 'low' : 'high',
+  quality: (localStorage.getItem('fenice-quality') === 'low' ? 'low' : 'high') as QualityLevel,
 };
 
 export const useViewStore = create<ViewState>((set) => ({
