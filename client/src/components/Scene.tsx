@@ -177,9 +177,9 @@ export function Scene(): React.JSX.Element {
       {isStarChart && <fogExp2 attach="fog" args={[STAR_CHART.fogColor, STAR_CHART.fogDensity]} />}
       {isDark && !isStarChart && (
         <>
-          <StarField />
-          <Nebulae />
-          <DustParticles />
+          <StarField quality={quality} />
+          <Nebulae quality={quality} />
+          <DustParticles quality={quality} />
         </>
       )}
       {isDark && !isCosmos && quality === 'high' && <GroundFog />}
