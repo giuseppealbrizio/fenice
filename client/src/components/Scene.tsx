@@ -18,6 +18,8 @@ import { CAMERA_NAV, STAR_CHART } from '../utils/cosmos';
 import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
 import { DustParticles } from './DustParticles';
+import { GroundFog } from './atmosphere/GroundFog';
+import { HazeLayers } from './atmosphere/HazeLayers';
 import { useViewStore } from '../stores/view.store';
 import type { QualityLevel } from '../stores/view.store';
 import {
@@ -180,6 +182,8 @@ export function Scene(): React.JSX.Element {
           <DustParticles />
         </>
       )}
+      {isDark && !isCosmos && quality === 'high' && <GroundFog />}
+      {isDark && !isStarChart && quality === 'high' && <HazeLayers />}
       <ambientLight
         intensity={sceneTheme.ambientIntensity}
         color={isStarChart ? '#4a6a9a' : isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
