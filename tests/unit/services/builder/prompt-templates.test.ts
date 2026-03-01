@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { TaskType } from '../../../../src/schemas/builder.schema.js';
 import {
-  BUILDER_SYSTEM_PROMPT,
-  BUILDER_PLAN_PROMPT,
   BUILDER_TOOLS,
   BUILDER_BASE_PROMPT,
   TASK_PROMPTS,
@@ -181,15 +179,24 @@ describe('BUILDER_TOOLS', () => {
   });
 });
 
-describe('BUILDER_SYSTEM_PROMPT (legacy)', () => {
-  it('should equal buildSystemPrompt("new-resource")', () => {
-    expect(BUILDER_SYSTEM_PROMPT).toBe(buildSystemPrompt('new-resource'));
+describe('buildSystemPrompt', () => {
+  it('should return base prompt + task-specific prompt for new-resource', () => {
+    const result = buildSystemPrompt('new-resource');
+    expect(result).toContain(BUILDER_BASE_PROMPT);
+    expect(result).toContain(TASK_PROMPTS['new-resource']);
   });
 });
 
-describe('BUILDER_PLAN_PROMPT (legacy)', () => {
-  it('should equal buildPlanPrompt("")', () => {
-    expect(BUILDER_PLAN_PROMPT).toBe(buildPlanPrompt(''));
+describe('buildPlanPrompt', () => {
+  it('should return plan prompt without file index when empty string', () => {
+    const result = buildPlanPrompt('');
+    expect(result).toContain('structured JSON plan');
+    expect(result).not.toContain('Available Files');
+  });
+
+  it('should include file index when provided', () => {
+    const result = buildPlanPrompt('src/models/user.model.ts');
+    expect(result).toContain('src/models/user.model.ts');
   });
 });
 
