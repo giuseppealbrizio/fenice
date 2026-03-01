@@ -45,10 +45,10 @@ export const STAR_FIELD_CONFIG = {
 } as const;
 
 export const NEBULA_CONFIG = {
-  count: 3,
-  minScale: 40,
-  maxScale: 80,
-  opacity: 0.04,
+  count: 5,
+  minScale: 50,
+  maxScale: 90,
+  opacity: 0.25,
   rotationSpeed: 0.0001,
   colors: ['#4a00a0', '#a000c8', '#200060'] as readonly string[],
 } as const;
