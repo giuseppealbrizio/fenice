@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Position3D } from '../services/layout.service';
+import { useViewStore } from '../stores/view.store';
 
 interface RoadPolylineProps {
   points: Position3D[];
@@ -25,6 +26,10 @@ export function RoadPolyline({
   markingEmissiveIntensity = 0.25,
   showHalo = false,
 }: RoadPolylineProps): React.JSX.Element {
+  const visualMode = useViewStore((s) => s.visualMode);
+  const quality = useViewStore((s) => s.quality);
+  const useIridescence = visualMode === 'dark' && quality === 'high';
+
   if (points.length < 2) return <></>;
 
   return (
@@ -49,13 +54,25 @@ export function RoadPolyline({
           <group key={`road-seg-${idx}`}>
             <mesh position={[centerX, centerY, centerZ]} rotation={[0, -angle, 0]}>
               <boxGeometry args={[length, ROAD_THICKNESS, width]} />
-              <meshStandardMaterial
-                color={surfaceColor}
-                transparent
-                opacity={surfaceOpacity}
-                roughness={0.95}
-                metalness={0.05}
-              />
+              {useIridescence ? (
+                <meshPhysicalMaterial
+                  color={surfaceColor}
+                  transparent
+                  opacity={surfaceOpacity}
+                  roughness={0.95}
+                  metalness={0.05}
+                  iridescence={0.3}
+                  iridescenceIOR={1.3}
+                />
+              ) : (
+                <meshStandardMaterial
+                  color={surfaceColor}
+                  transparent
+                  opacity={surfaceOpacity}
+                  roughness={0.95}
+                  metalness={0.05}
+                />
+              )}
             </mesh>
             <mesh
               position={[centerX, centerY + ROAD_THICKNESS / 2 + MARKING_THICKNESS / 2, centerZ]}

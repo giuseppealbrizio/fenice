@@ -31,6 +31,19 @@ export function generateStarSizes(count: number, min: number, max: number): Floa
 }
 
 /**
+ * Generate star class assignments.
+ * 0 = small (70%), 1 = medium (25%), 2 = large (5%)
+ */
+export function generateStarClasses(count: number): Float32Array {
+  const classes = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const r = Math.random();
+    classes[i] = r < 0.7 ? 0 : r < 0.95 ? 1 : 2;
+  }
+  return classes;
+}
+
+/**
  * Generate dust particle positions within a cubic volume.
  */
 export function generateDustPositions(count: number, spread: number): Float32Array {

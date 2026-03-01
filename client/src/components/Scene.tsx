@@ -7,23 +7,33 @@ import {
   Vignette,
   ChromaticAberration,
   Noise,
+  SSAO,
+  DepthOfField,
 } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { City } from './City';
 import { Cosmos } from './Cosmos';
 import { CameraController } from './CameraController';
+import { CinematicCamera } from './CinematicCamera';
 import { CAMERA_NAV, STAR_CHART } from '../utils/cosmos';
 import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
+import { ShaderNebulae } from './ShaderNebulae';
 import { DustParticles } from './DustParticles';
+import { GroundFog } from './atmosphere/GroundFog';
+import { HazeLayers } from './atmosphere/HazeLayers';
+import { AnimatedKeyLight } from './atmosphere/AmbientLight';
+import { PulseWave } from './atmosphere/PulseWave';
 import { useViewStore } from '../stores/view.store';
+import type { QualityLevel } from '../stores/view.store';
 import {
   COSMIC_PALETTE,
   SCENE_FOG,
   VIGNETTE_CONFIG,
   CHROMATIC_ABERRATION_CONFIG,
-  NOISE_CONFIG,
   COSMIC_LIGHTING,
+  SSAO_CONFIG,
+  DEPTH_OF_FIELD_CONFIG,
 } from '../utils/atmosphere';
 import { useCosmosSettingsStore } from '../stores/cosmos-settings.store';
 
@@ -48,23 +58,64 @@ const SCENE_THEME = {
   },
 } as const;
 
+/** Hoisted to avoid re-creating on every render */
+const SSAO_COLOR = new THREE.Color('#000000');
+
 function SceneEffects({
   isDark,
   isStarChart,
+  quality,
 }: {
   isDark: boolean;
   isStarChart: boolean;
+  quality: QualityLevel;
 }): React.JSX.Element | null {
   const bloomIntensity = useCosmosSettingsStore((s) => s.bloomIntensity);
   const bloomThreshold = useCosmosSettingsStore((s) => s.bloomThreshold);
+  const ssaoIntensity = useCosmosSettingsStore((s) => s.ssaoIntensity);
+  const ssaoRadius = useCosmosSettingsStore((s) => s.ssaoRadius);
+  const dofBokehScale = useCosmosSettingsStore((s) => s.dofBokehScale);
+  const dofFocusDistance = useCosmosSettingsStore((s) => s.dofFocusDistance);
+  const vignetteDarkness = useCosmosSettingsStore((s) => s.vignetteDarkness);
+  const noiseOpacity = useCosmosSettingsStore((s) => s.noiseOpacity);
 
   if (!isDark && !isStarChart) return null;
 
-  // Star chart: very subtle vignette only, no bloom/CA/noise
+  // Star chart: vignette only, no bloom/CA/noise
   if (isStarChart) {
     return (
       <EffectComposer>
-        <Vignette offset={0.4} darkness={0.5} />
+        <Vignette offset={0.4} darkness={vignetteDarkness} />
+      </EffectComposer>
+    );
+  }
+
+  if (quality !== 'low') {
+    return (
+      <EffectComposer>
+        <Bloom
+          intensity={bloomIntensity}
+          luminanceThreshold={bloomThreshold}
+          luminanceSmoothing={0.8}
+          mipmapBlur
+        />
+        <SSAO
+          radius={ssaoRadius}
+          intensity={ssaoIntensity}
+          luminanceInfluence={SSAO_CONFIG.luminanceInfluence}
+          color={SSAO_COLOR}
+        />
+        <DepthOfField
+          focusDistance={dofFocusDistance}
+          focalLength={DEPTH_OF_FIELD_CONFIG.focalLength}
+          bokehScale={dofBokehScale}
+        />
+        <Vignette offset={VIGNETTE_CONFIG.offset} darkness={vignetteDarkness} />
+        <ChromaticAberration
+          offset={new THREE.Vector2(...CHROMATIC_ABERRATION_CONFIG.offset)}
+          blendFunction={BlendFunction.NORMAL}
+        />
+        <Noise opacity={noiseOpacity} blendFunction={BlendFunction.SOFT_LIGHT} />
       </EffectComposer>
     );
   }
@@ -77,12 +128,12 @@ function SceneEffects({
         luminanceSmoothing={0.8}
         mipmapBlur
       />
-      <Vignette offset={VIGNETTE_CONFIG.offset} darkness={VIGNETTE_CONFIG.darkness} />
+      <Vignette offset={VIGNETTE_CONFIG.offset} darkness={vignetteDarkness} />
       <ChromaticAberration
         offset={new THREE.Vector2(...CHROMATIC_ABERRATION_CONFIG.offset)}
         blendFunction={BlendFunction.NORMAL}
       />
-      <Noise opacity={NOISE_CONFIG.opacity} blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Noise opacity={noiseOpacity} blendFunction={BlendFunction.SOFT_LIGHT} />
     </EffectComposer>
   );
 }
@@ -96,9 +147,13 @@ export function Scene(): React.JSX.Element {
   const visualMode = useViewStore((s) => s.visualMode);
   const showGrid = useViewStore((s) => s.showGrid);
   const sceneMode = useViewStore((s) => s.sceneMode);
+  const quality = useViewStore((s) => s.quality);
+  const autoRotateSpeed = useCosmosSettingsStore((s) => s.autoRotateSpeed);
+  const cameraDamping = useCosmosSettingsStore((s) => s.cameraDamping);
   const isDark = visualMode === 'dark';
   const isCosmos = sceneMode === 'cosmos';
   const isStarChart = isCosmos && !isDark;
+  const isHighPlus = quality !== 'low';
 
   // In cosmos star chart mode, override the theme
   const sceneTheme = isStarChart
@@ -122,7 +177,7 @@ export function Scene(): React.JSX.Element {
         position: cameraPosition,
         fov: cameraFov,
         near: 0.1,
-        far: 500,
+        far: quality === 'ultra' ? 1000 : 500,
       }}
       style={{ width: '100%', height: '100%', backgroundColor: sceneTheme.canvasBg }}
       gl={{
@@ -134,21 +189,28 @@ export function Scene(): React.JSX.Element {
       {isStarChart && <fogExp2 attach="fog" args={[STAR_CHART.fogColor, STAR_CHART.fogDensity]} />}
       {isDark && !isStarChart && (
         <>
-          <StarField />
-          <Nebulae />
-          <DustParticles />
+          <StarField quality={quality} />
+          {quality === 'ultra' ? <ShaderNebulae /> : <Nebulae quality={quality} />}
+          <DustParticles quality={quality} />
         </>
       )}
+      {isDark && !isCosmos && isHighPlus && <GroundFog />}
+      {isDark && !isStarChart && isHighPlus && <HazeLayers />}
       <ambientLight
         intensity={sceneTheme.ambientIntensity}
         color={isStarChart ? '#4a6a9a' : isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
       />
-      <directionalLight
-        position={COSMIC_LIGHTING.keyLightPosition}
-        intensity={sceneTheme.keyLight}
-        color={isStarChart ? '#6090c0' : isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
-      />
+      {isDark && !isStarChart && isHighPlus ? (
+        <AnimatedKeyLight baseIntensity={sceneTheme.keyLight} />
+      ) : (
+        <directionalLight
+          position={COSMIC_LIGHTING.keyLightPosition}
+          intensity={sceneTheme.keyLight}
+          color={isStarChart ? '#6090c0' : isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
+        />
+      )}
       <directionalLight position={[-10, 15, -10]} intensity={sceneTheme.fillLight} />
+      {isDark && !isStarChart && isHighPlus && <PulseWave />}
       {/* Ground plane for Tron City mode */}
       {!isCosmos && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
@@ -173,14 +235,15 @@ export function Scene(): React.JSX.Element {
       <OrbitControls
         makeDefault
         enableDamping
-        dampingFactor={CAMERA_NAV.dampingFactor}
+        dampingFactor={cameraDamping}
         autoRotate={isCosmos && isDark}
-        autoRotateSpeed={CAMERA_NAV.autoRotateSpeed}
+        autoRotateSpeed={autoRotateSpeed}
         minDistance={CAMERA_NAV.minDistance}
         maxDistance={CAMERA_NAV.maxDistance}
       />
       {isCosmos && <CameraController />}
-      <SceneEffects isDark={isDark} isStarChart={isStarChart} />
+      <CinematicCamera />
+      <SceneEffects isDark={isDark} isStarChart={isStarChart} quality={quality} />
     </Canvas>
   );
 }

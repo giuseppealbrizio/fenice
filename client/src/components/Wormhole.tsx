@@ -38,7 +38,9 @@ export function Wormhole({ position }: WormholeProps): React.JSX.Element {
   const authGate = useWorldStore((s) => s.authGate);
   const linkStyle = LINK_STATE_COLORS[authGate.linkState];
   const visualMode = useViewStore((s) => s.visualMode);
+  const quality = useViewStore((s) => s.quality);
   const isStarChart = visualMode === 'light';
+  const isHighQuality = quality === 'high';
 
   const portalTexture = useMemo(() => createPortalTexture(linkStyle.hex), [linkStyle.hex]);
   const glowTexture = useMemo(() => createPortalTexture(linkStyle.hex), [linkStyle.hex]);
@@ -62,7 +64,7 @@ export function Wormhole({ position }: WormholeProps): React.JSX.Element {
     // Portal opacity pulse
     if (portalRef.current) {
       const mat = portalRef.current.material;
-      if (mat instanceof THREE.MeshBasicMaterial) {
+      if (mat instanceof THREE.Material && 'opacity' in mat) {
         mat.opacity = authGate.open
           ? WORMHOLE.portalOpacity + 0.05 * Math.sin(clock.elapsedTime * 2)
           : WORMHOLE.portalOpacity * 0.3;
@@ -111,20 +113,33 @@ export function Wormhole({ position }: WormholeProps): React.JSX.Element {
               metalness={WORMHOLE.metalness}
               roughness={WORMHOLE.roughness}
               clearcoat={WORMHOLE.clearcoat}
+              {...(isHighQuality ? { transmission: 0.4, thickness: 1.5, ior: 2.0 } : {})}
             />
           </mesh>
 
           {/* Inner portal surface */}
           <mesh ref={portalRef} rotation={[Math.PI / 2, 0, 0]}>
             <circleGeometry args={[WORMHOLE.portalRadius, 48]} />
-            <meshBasicMaterial
-              map={portalTexture}
-              transparent
-              opacity={WORMHOLE.portalOpacity}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
+            {isHighQuality ? (
+              <meshPhysicalMaterial
+                map={portalTexture}
+                transparent
+                opacity={WORMHOLE.portalOpacity}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                iridescence={0.5}
+              />
+            ) : (
+              <meshBasicMaterial
+                map={portalTexture}
+                transparent
+                opacity={WORMHOLE.portalOpacity}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                side={THREE.DoubleSide}
+              />
+            )}
           </mesh>
 
           {/* Glow sprite */}

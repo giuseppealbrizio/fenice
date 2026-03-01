@@ -1,9 +1,10 @@
+import { useState, useEffect, useRef } from 'react';
 import { useWorldStore } from '../stores/world.store';
 import { useViewStore } from '../stores/view.store';
 import { METHOD_COLORS, METHOD_LABELS, LINK_STATE_COLORS } from '../utils/colors';
 import type { HttpMethod } from '../types/world';
 import type { LinkState } from '../types/semantic';
-import type { RouteLayerMode, SceneMode } from '../stores/view.store';
+import type { RouteLayerMode, SceneMode, QualityLevel } from '../stores/view.store';
 
 const LEGEND_METHODS: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete'];
 
@@ -23,6 +24,12 @@ const ROUTE_LAYER_OPTIONS: Array<{ mode: RouteLayerMode; label: string }> = [
 const SCENE_MODE_OPTIONS: Array<{ mode: SceneMode; label: string }> = [
   { mode: 'cosmos', label: 'Cosmos' },
   { mode: 'tron', label: 'Tron City' },
+];
+
+const QUALITY_OPTIONS: Array<{ level: QualityLevel; label: string }> = [
+  { level: 'low', label: 'Low' },
+  { level: 'high', label: 'High' },
+  { level: 'ultra', label: 'Ultra' },
 ];
 
 const HUD_THEME = {
@@ -58,6 +65,49 @@ const HUD_THEME = {
   },
 } as const;
 
+function FpsCounter(): React.JSX.Element {
+  const [fps, setFps] = useState(0);
+  const frames = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  useEffect(() => {
+    let rafId: number;
+    const loop = () => {
+      frames.current++;
+      const now = performance.now();
+      if (now - lastTime.current >= 1000) {
+        setFps(frames.current);
+        frames.current = 0;
+        lastTime.current = now;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  const color = fps >= 55 ? '#50c878' : fps >= 30 ? '#ffd700' : '#ff6b6b';
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '16px',
+        right: '16px',
+        backgroundColor: 'rgba(0, 0, 8, 0.75)',
+        border: '1px solid rgba(0, 229, 255, 0.15)',
+        borderRadius: '8px',
+        padding: '4px 10px',
+        fontVariantNumeric: 'tabular-nums',
+        pointerEvents: 'none',
+      }}
+    >
+      <span style={{ fontSize: '12px', fontWeight: 700, color }}>{fps}</span>
+      <span style={{ fontSize: '10px', color: '#6f7ca3', marginLeft: '4px' }}>FPS</span>
+    </div>
+  );
+}
+
 export function HUD(): React.JSX.Element {
   const loading = useWorldStore((s) => s.loading);
   const connected = useWorldStore((s) => s.connected);
@@ -69,6 +119,8 @@ export function HUD(): React.JSX.Element {
   const setRouteLayerMode = useViewStore((s) => s.setRouteLayerMode);
   const sceneMode = useViewStore((s) => s.sceneMode);
   const setSceneMode = useViewStore((s) => s.setSceneMode);
+  const quality = useViewStore((s) => s.quality);
+  const setQuality = useViewStore((s) => s.setQuality);
   const isCosmos = sceneMode === 'cosmos';
   const isStarChart = isCosmos && visualMode === 'light';
   const theme = isStarChart ? HUD_THEME.starChart : HUD_THEME[visualMode];
@@ -79,6 +131,7 @@ export function HUD(): React.JSX.Element {
         position: 'absolute',
         top: 0,
         left: 0,
+        right: 0,
         padding: '16px',
         pointerEvents: 'none',
         userSelect: 'none',
@@ -132,6 +185,47 @@ export function HUD(): React.JSX.Element {
                 cursor: 'pointer',
                 boxShadow: active ? '0 0 10px rgba(0, 229, 255, 0.2)' : 'none',
               }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+        <div
+          style={{
+            width: '1px',
+            height: '22px',
+            backgroundColor: theme.divider,
+            alignSelf: 'center',
+          }}
+        />
+        {QUALITY_OPTIONS.map((option) => {
+          const active = option.level === quality;
+          return (
+            <button
+              key={option.level}
+              type="button"
+              onClick={() => setQuality(option.level)}
+              style={{
+                border: `1px solid ${active ? (option.level === 'ultra' ? '#ff8800' : '#a855f7') : theme.buttonBorder}`,
+                backgroundColor: active
+                  ? option.level === 'ultra'
+                    ? 'rgba(255, 136, 0, 0.15)'
+                    : 'rgba(168, 85, 247, 0.15)'
+                  : theme.buttonBg,
+                color: theme.buttonText,
+                borderRadius: '999px',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '0.3px',
+                cursor: 'pointer',
+                boxShadow: active
+                  ? option.level === 'ultra'
+                    ? '0 0 10px rgba(255, 136, 0, 0.3)'
+                    : '0 0 10px rgba(168, 85, 247, 0.2)'
+                  : 'none',
+              }}
+              aria-label={`Set quality to ${option.level}`}
             >
               {option.label}
             </button>
@@ -381,6 +475,7 @@ export function HUD(): React.JSX.Element {
           <div style={{ marginTop: '4px' }}>Switch to Endpoint Debug for per-endpoint detail.</div>
         </div>
       </div>
+      <FpsCounter />
     </div>
   );
 }

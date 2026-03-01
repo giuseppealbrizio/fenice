@@ -5,6 +5,7 @@ import {
   type CosmosSettings,
 } from '../stores/cosmos-settings.store';
 import { useViewStore } from '../stores/view.store';
+import { useCinematicStore, CINEMATIC_PRESETS } from '../stores/cinematic.store';
 
 interface SliderRowProps {
   label: string;
@@ -105,7 +106,181 @@ const SLIDER_CONFIG: Array<{ group: string; sliders: SliderRowProps[] }> = [
       { label: 'Threshold', field: 'bloomThreshold', min: 0, max: 1, step: 0.05 },
     ],
   },
+  {
+    group: 'Post-Process',
+    sliders: [
+      { label: 'SSAO Power', field: 'ssaoIntensity', min: 0, max: 200, step: 5 },
+      { label: 'SSAO Radius', field: 'ssaoRadius', min: 0.1, max: 5.0, step: 0.1 },
+      { label: 'DoF Bokeh', field: 'dofBokehScale', min: 0, max: 20, step: 0.5 },
+      { label: 'DoF Focus', field: 'dofFocusDistance', min: 0, max: 0.5, step: 0.01 },
+      { label: 'Vignette', field: 'vignetteDarkness', min: 0, max: 1, step: 0.05 },
+      { label: 'Noise', field: 'noiseOpacity', min: 0, max: 1, step: 0.02 },
+    ],
+  },
+  {
+    group: 'Atmosphere',
+    sliders: [
+      { label: 'Haze Mult', field: 'hazeOpacity', min: 0, max: 20, step: 0.5 },
+      { label: 'Nebula Opa', field: 'nebulaOpacity', min: 0, max: 1, step: 0.02 },
+      { label: 'Dust Opa', field: 'dustOpacity', min: 0, max: 1, step: 0.02 },
+      { label: 'Fog Opacity', field: 'fogOpacity', min: 0, max: 1, step: 0.02 },
+    ],
+  },
+  {
+    group: 'Camera',
+    sliders: [
+      { label: 'Rotate Speed', field: 'autoRotateSpeed', min: 0, max: 3, step: 0.05 },
+      { label: 'Damping', field: 'cameraDamping', min: 0.01, max: 0.3, step: 0.01 },
+    ],
+  },
 ];
+
+// ─── Cinematic controls ─────────────────────────────────────────────────────
+
+function CinematicControls(): React.JSX.Element {
+  const active = useCinematicStore((s) => s.active);
+  const playing = useCinematicStore((s) => s.playing);
+  const presetName = useCinematicStore((s) => s.presetName);
+  const progress = useCinematicStore((s) => s.progress);
+  const speed = useCinematicStore((s) => s.speed);
+  const play = useCinematicStore((s) => s.play);
+  const stop = useCinematicStore((s) => s.stop);
+  const pause = useCinematicStore((s) => s.pause);
+  const resume = useCinematicStore((s) => s.resume);
+  const setSpeed = useCinematicStore((s) => s.setSpeed);
+
+  return (
+    <div>
+      {/* Preset buttons */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+        {CINEMATIC_PRESETS.map((preset) => {
+          const isActive = active && presetName === preset.name;
+          return (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => {
+                if (isActive) {
+                  stop();
+                } else {
+                  play(preset.name);
+                }
+              }}
+              style={{
+                border: `1px solid ${isActive ? '#ff8800' : 'rgba(0, 229, 255, 0.2)'}`,
+                backgroundColor: isActive ? 'rgba(255, 136, 0, 0.15)' : 'rgba(0, 0, 15, 0.8)',
+                color: isActive ? '#ffaa44' : '#8899bb',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '10px',
+                fontWeight: isActive ? 700 : 500,
+                cursor: 'pointer',
+                letterSpacing: '0.3px',
+              }}
+            >
+              {isActive ? `${preset.label}` : preset.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Playback controls (only when active) */}
+      {active && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {/* Progress bar */}
+          <div
+            style={{
+              height: '3px',
+              backgroundColor: 'rgba(0, 229, 255, 0.1)',
+              borderRadius: '2px',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${progress * 100}%`,
+                backgroundColor: '#ff8800',
+                borderRadius: '2px',
+                transition: 'width 0.1s linear',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            {/* Pause / Resume */}
+            <button
+              type="button"
+              onClick={() => (playing ? pause() : resume())}
+              style={{
+                border: '1px solid rgba(255, 136, 0, 0.3)',
+                backgroundColor: 'rgba(0, 0, 15, 0.8)',
+                color: '#ffaa44',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                fontSize: '10px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {playing ? 'Pause' : 'Play'}
+            </button>
+
+            {/* Stop */}
+            <button
+              type="button"
+              onClick={stop}
+              style={{
+                border: '1px solid rgba(255, 68, 68, 0.3)',
+                backgroundColor: 'rgba(0, 0, 15, 0.8)',
+                color: '#ff6666',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                fontSize: '10px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Stop
+            </button>
+
+            {/* Speed control */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+              <span style={{ fontSize: '10px', color: '#6f7ca3' }}>Speed</span>
+              <input
+                type="range"
+                min={0.1}
+                max={3}
+                step={0.1}
+                value={speed}
+                onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                style={{
+                  width: '60px',
+                  height: '3px',
+                  accentColor: '#ff8800',
+                  cursor: 'pointer',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: '10px',
+                  color: '#ffaa44',
+                  width: '28px',
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {speed.toFixed(1)}x
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main settings panel ────────────────────────────────────────────────────
 
 export function CosmosSettings(): React.JSX.Element | null {
   const [open, setOpen] = useState(false);
@@ -205,6 +380,29 @@ export function CosmosSettings(): React.JSX.Element | null {
             >
               x
             </button>
+          </div>
+
+          {/* Cinematic presets */}
+          <div
+            style={{
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '1px solid rgba(255, 136, 0, 0.15)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '10px',
+                color: '#ff8800',
+                textTransform: 'uppercase',
+                letterSpacing: '1.5px',
+                marginBottom: '8px',
+                fontWeight: 600,
+              }}
+            >
+              Cinematic
+            </div>
+            <CinematicControls />
           </div>
 
           {/* Slider groups */}
