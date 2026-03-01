@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **M4 Atmosphere**: post-processing pipeline (bloom, SSAO, depth of field, vignette, chromatic aberration, noise), cosmic skybox (star field, nebulae, dust particles), animated key light, ground fog, haze layers, pulse wave effect
+- **M4 Galaxy Settings panel**: real-time sliders for all atmosphere parameters (layout, stars, planets, routes, bloom, post-processing, atmosphere, camera)
+- **Cinematic camera system**: 5 keyframe-based presets (Grand Orbit, Flythrough, Top-Down Sweep, Dramatic Rise, Nebula Tour) with smooth-step easing, play/pause/stop/speed controls
+- **Ultra quality mode**: custom GLSL shader nebulae (6-octave fBM simplex noise, 7 palettes), 12,000 spectral-class stars, 2,500 dust particles with trails, extended far plane
+- **Rich nebulae**: multi-layer procedural textures with 5 astronomical palettes (Helix, Carina, Eagle, Orion, Cat's Eye), annular ring structure, bright knots, filaments
+- **FPS counter**: real-time frame rate display in HUD (color-coded: green/yellow/red)
+- **Cosmos settings store**: Zustand store for all tunable 3D scene parameters with reset-to-defaults
+- **Cinematic store**: Zustand store for camera preset playback state
 - **M3 AI Builder pipeline**: prompt-to-PR code generation via Claude API with tool use
 - Builder routes: `POST /api/v1/builder/generate`, `GET /api/v1/builder/jobs/:id`, `GET /api/v1/builder/jobs`
 - Builder job model with MongoDB audit trail (status tracking across 11 pipeline states)
