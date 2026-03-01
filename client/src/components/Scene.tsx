@@ -18,6 +18,7 @@ import { CinematicCamera } from './CinematicCamera';
 import { CAMERA_NAV, STAR_CHART } from '../utils/cosmos';
 import { StarField } from './StarField';
 import { Nebulae } from './Nebulae';
+import { ShaderNebulae } from './ShaderNebulae';
 import { DustParticles } from './DustParticles';
 import { GroundFog } from './atmosphere/GroundFog';
 import { HazeLayers } from './atmosphere/HazeLayers';
@@ -89,7 +90,7 @@ function SceneEffects({
     );
   }
 
-  if (quality === 'high') {
+  if (quality !== 'low') {
     return (
       <EffectComposer>
         <Bloom
@@ -152,6 +153,7 @@ export function Scene(): React.JSX.Element {
   const isDark = visualMode === 'dark';
   const isCosmos = sceneMode === 'cosmos';
   const isStarChart = isCosmos && !isDark;
+  const isHighPlus = quality !== 'low';
 
   // In cosmos star chart mode, override the theme
   const sceneTheme = isStarChart
@@ -175,7 +177,7 @@ export function Scene(): React.JSX.Element {
         position: cameraPosition,
         fov: cameraFov,
         near: 0.1,
-        far: 500,
+        far: quality === 'ultra' ? 1000 : 500,
       }}
       style={{ width: '100%', height: '100%', backgroundColor: sceneTheme.canvasBg }}
       gl={{
@@ -188,17 +190,17 @@ export function Scene(): React.JSX.Element {
       {isDark && !isStarChart && (
         <>
           <StarField quality={quality} />
-          <Nebulae quality={quality} />
+          {quality === 'ultra' ? <ShaderNebulae /> : <Nebulae quality={quality} />}
           <DustParticles quality={quality} />
         </>
       )}
-      {isDark && !isCosmos && quality === 'high' && <GroundFog />}
-      {isDark && !isStarChart && quality === 'high' && <HazeLayers />}
+      {isDark && !isCosmos && isHighPlus && <GroundFog />}
+      {isDark && !isStarChart && isHighPlus && <HazeLayers />}
       <ambientLight
         intensity={sceneTheme.ambientIntensity}
         color={isStarChart ? '#4a6a9a' : isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
       />
-      {isDark && !isStarChart && quality === 'high' ? (
+      {isDark && !isStarChart && isHighPlus ? (
         <AnimatedKeyLight baseIntensity={sceneTheme.keyLight} />
       ) : (
         <directionalLight
@@ -208,7 +210,7 @@ export function Scene(): React.JSX.Element {
         />
       )}
       <directionalLight position={[-10, 15, -10]} intensity={sceneTheme.fillLight} />
-      {isDark && !isStarChart && quality === 'high' && <PulseWave />}
+      {isDark && !isStarChart && isHighPlus && <PulseWave />}
       {/* Ground plane for Tron City mode */}
       {!isCosmos && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>

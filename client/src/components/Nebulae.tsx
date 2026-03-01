@@ -132,7 +132,7 @@ export function Nebulae({ quality }: NebulaeProps): React.JSX.Element {
   const nebulaOpacity = useCosmosSettingsStore((s) => s.nebulaOpacity);
 
   const nebulae = useMemo<NebulaData[]>(() => {
-    const count = quality === 'high' ? NEBULA_CONFIG.count : 3;
+    const count = quality !== 'low' ? NEBULA_CONFIG.count : 3;
     const result: NebulaData[] = [];
 
     for (let i = 0; i < count; i++) {
@@ -172,7 +172,7 @@ export function Nebulae({ quality }: NebulaeProps): React.JSX.Element {
       // Slow rotation
       child.rotation.z += data.rotationSpeed * delta * 60;
 
-      if (quality === 'high') {
+      if (quality !== 'low') {
         // Drift
         const driftX = Math.sin(t * 0.01 + data.driftOffset) * 3;
         const driftZ = Math.sin(t * 0.01 + data.driftOffset + 1.5) * 3;

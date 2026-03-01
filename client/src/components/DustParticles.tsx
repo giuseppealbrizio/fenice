@@ -11,13 +11,14 @@ interface DustParticlesProps {
 }
 
 const TRAIL_COUNT = 50;
+const ULTRA_TRAIL_COUNT = 150;
 
 export function DustParticles({ quality }: DustParticlesProps): React.JSX.Element {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.Points>(null);
   const dustOpacity = useCosmosSettingsStore((s) => s.dustOpacity);
 
-  const count = quality === 'high' ? DUST_CONFIG.count : 300;
+  const count = quality === 'ultra' ? 2500 : quality === 'high' ? DUST_CONFIG.count : 300;
 
   const { basePositions, dustSizes, twinkleOffsets } = useMemo(() => {
     const bp = generateDustPositions(count, DUST_CONFIG.spread);
@@ -31,18 +32,19 @@ export function DustParticles({ quality }: DustParticlesProps): React.JSX.Elemen
     return { basePositions: bp, dustSizes: ds, twinkleOffsets: to };
   }, [count]);
 
-  // Trail particles (high quality only)
+  // Trail particles (high+ quality)
+  const trailCount = quality === 'ultra' ? ULTRA_TRAIL_COUNT : TRAIL_COUNT;
   const trailData = useMemo(() => {
-    if (quality !== 'high') return null;
-    const positions = generateDustPositions(TRAIL_COUNT, DUST_CONFIG.spread * 0.8);
-    const sizes = new Float32Array(TRAIL_COUNT);
-    const offsets = new Float32Array(TRAIL_COUNT);
-    for (let i = 0; i < TRAIL_COUNT; i++) {
+    if (quality === 'low') return null;
+    const positions = generateDustPositions(trailCount, DUST_CONFIG.spread * 0.8);
+    const sizes = new Float32Array(trailCount);
+    const offsets = new Float32Array(trailCount);
+    for (let i = 0; i < trailCount; i++) {
       sizes[i] = DUST_CONFIG.minSize * 0.5 + Math.random() * DUST_CONFIG.minSize;
       offsets[i] = Math.random() * Math.PI * 2;
     }
     return { positions, sizes, offsets };
-  }, [quality]);
+  }, [quality, trailCount]);
 
   useFrame(({ clock }) => {
     if (!pointsRef.current) return;
@@ -72,12 +74,12 @@ export function DustParticles({ quality }: DustParticlesProps): React.JSX.Elemen
     }
 
     // Animate trail particles
-    if (quality === 'high' && trailRef.current && trailData) {
+    if (quality !== 'low' && trailRef.current && trailData) {
       const trailGeo = trailRef.current.geometry;
       const trailPosAttr = trailGeo.getAttribute('position');
       if (trailPosAttr) {
         const trailPosArr = trailPosAttr.array as Float32Array;
-        for (let i = 0; i < TRAIL_COUNT; i++) {
+        for (let i = 0; i < trailCount; i++) {
           const i3 = i * 3;
           trailPosArr[i3] = trailData.positions[i3]! + Math.sin(t * 0.7 + i * 0.63) * 0.5;
           trailPosArr[i3 + 1] = trailData.positions[i3 + 1]! + Math.cos(t * 0.7 + i * 1.07) * 0.3;
@@ -105,7 +107,7 @@ export function DustParticles({ quality }: DustParticlesProps): React.JSX.Elemen
           blending={THREE.AdditiveBlending}
         />
       </points>
-      {quality === 'high' && trailData && (
+      {quality !== 'low' && trailData && (
         <points ref={trailRef}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[trailData.positions.slice(), 3]} />

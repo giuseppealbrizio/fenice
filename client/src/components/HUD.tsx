@@ -28,6 +28,7 @@ const SCENE_MODE_OPTIONS: Array<{ mode: SceneMode; label: string }> = [
 const QUALITY_OPTIONS: Array<{ level: QualityLevel; label: string }> = [
   { level: 'low', label: 'Low' },
   { level: 'high', label: 'High' },
+  { level: 'ultra', label: 'Ultra' },
 ];
 
 const HUD_THEME = {
@@ -160,8 +161,12 @@ export function HUD(): React.JSX.Element {
               type="button"
               onClick={() => setQuality(option.level)}
               style={{
-                border: `1px solid ${active ? '#a855f7' : theme.buttonBorder}`,
-                backgroundColor: active ? 'rgba(168, 85, 247, 0.15)' : theme.buttonBg,
+                border: `1px solid ${active ? (option.level === 'ultra' ? '#ff8800' : '#a855f7') : theme.buttonBorder}`,
+                backgroundColor: active
+                  ? option.level === 'ultra'
+                    ? 'rgba(255, 136, 0, 0.15)'
+                    : 'rgba(168, 85, 247, 0.15)'
+                  : theme.buttonBg,
                 color: theme.buttonText,
                 borderRadius: '999px',
                 padding: '6px 10px',
@@ -169,7 +174,11 @@ export function HUD(): React.JSX.Element {
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '0.3px',
                 cursor: 'pointer',
-                boxShadow: active ? '0 0 10px rgba(168, 85, 247, 0.2)' : 'none',
+                boxShadow: active
+                  ? option.level === 'ultra'
+                    ? '0 0 10px rgba(255, 136, 0, 0.3)'
+                    : '0 0 10px rgba(168, 85, 247, 0.2)'
+                  : 'none',
               }}
               aria-label={`Set quality to ${option.level}`}
             >

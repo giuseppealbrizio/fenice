@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export type VisualMode = 'dark' | 'light';
 export type RouteLayerMode = 'city' | 'debug' | 'both';
 export type SceneMode = 'cosmos' | 'tron';
-export type QualityLevel = 'high' | 'low';
+export type QualityLevel = 'ultra' | 'high' | 'low';
 
 interface ViewState {
   visualMode: VisualMode;
@@ -31,7 +31,10 @@ const initialViewState = {
   sceneMode: 'cosmos' as SceneMode,
   showGrid: false,
   focusTarget: null as [number, number, number] | null,
-  quality: (localStorage.getItem('fenice-quality') === 'low' ? 'low' : 'high') as QualityLevel,
+  quality: (() => {
+    const stored = localStorage.getItem('fenice-quality');
+    return stored === 'low' || stored === 'ultra' ? stored : 'high';
+  })() as QualityLevel,
 };
 
 export const useViewStore = create<ViewState>((set) => ({
