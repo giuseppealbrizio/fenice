@@ -79,11 +79,11 @@ function SceneEffects({
 
   if (!isDark && !isStarChart) return null;
 
-  // Star chart: very subtle vignette only, no bloom/CA/noise
+  // Star chart: vignette only, no bloom/CA/noise
   if (isStarChart) {
     return (
       <EffectComposer>
-        <Vignette offset={0.4} darkness={0.5} />
+        <Vignette offset={0.4} darkness={vignetteDarkness} />
       </EffectComposer>
     );
   }
