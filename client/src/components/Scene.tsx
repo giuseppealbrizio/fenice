@@ -20,6 +20,8 @@ import { Nebulae } from './Nebulae';
 import { DustParticles } from './DustParticles';
 import { GroundFog } from './atmosphere/GroundFog';
 import { HazeLayers } from './atmosphere/HazeLayers';
+import { AnimatedKeyLight } from './atmosphere/AmbientLight';
+import { PulseWave } from './atmosphere/PulseWave';
 import { useViewStore } from '../stores/view.store';
 import type { QualityLevel } from '../stores/view.store';
 import {
@@ -188,12 +190,17 @@ export function Scene(): React.JSX.Element {
         intensity={sceneTheme.ambientIntensity}
         color={isStarChart ? '#4a6a9a' : isDark ? COSMIC_LIGHTING.ambientColor : '#ffffff'}
       />
-      <directionalLight
-        position={COSMIC_LIGHTING.keyLightPosition}
-        intensity={sceneTheme.keyLight}
-        color={isStarChart ? '#6090c0' : isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
-      />
+      {isDark && !isStarChart && quality === 'high' ? (
+        <AnimatedKeyLight baseIntensity={sceneTheme.keyLight} />
+      ) : (
+        <directionalLight
+          position={COSMIC_LIGHTING.keyLightPosition}
+          intensity={sceneTheme.keyLight}
+          color={isStarChart ? '#6090c0' : isDark ? COSMIC_LIGHTING.keyLightColor : '#ffffff'}
+        />
+      )}
       <directionalLight position={[-10, 15, -10]} intensity={sceneTheme.fillLight} />
+      {isDark && !isStarChart && quality === 'high' && <PulseWave />}
       {/* Ground plane for Tron City mode */}
       {!isCosmos && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>

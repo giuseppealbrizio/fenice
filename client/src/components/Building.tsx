@@ -13,7 +13,8 @@ import {
 import { useSelectionStore } from '../stores/selection.store';
 import { useWorldStore } from '../stores/world.store';
 import { useViewStore } from '../stores/view.store';
-import { BUILDING_MATERIAL, WIREFRAME_OVERLAY } from '../utils/atmosphere';
+import { BUILDING_MATERIAL, WIREFRAME_OVERLAY, PULSE_WAVE_CONFIG } from '../utils/atmosphere';
+import { pulseWaveRadius } from './atmosphere/PulseWave';
 
 interface BuildingProps {
   layout: BuildingLayout;
@@ -30,13 +31,21 @@ export function Building({ layout, endpoint, buildingIndex }: BuildingProps): Re
   const isSelected = selectedId === endpoint.id;
   const methodColor = METHOD_COLORS[endpoint.method];
 
-  // Emissive breathing animation (skip on low quality)
+  // Emissive breathing animation + pulse wave boost (skip on low quality)
   useFrame(({ clock }) => {
     if (quality === 'low' || !meshRef.current) return;
     const mat = meshRef.current.material;
     if (!('emissiveIntensity' in mat)) return;
-    (mat as MeshPhysicalMaterial).emissiveIntensity =
-      0.1 + 0.08 * Math.sin(clock.elapsedTime * 0.3 + buildingIndex * 0.5);
+    const baseEmissive = 0.1 + 0.08 * Math.sin(clock.elapsedTime * 0.3 + buildingIndex * 0.5);
+
+    // Pulse wave boost — brighten buildings as the wave passes through
+    const distFromCenter = Math.sqrt(layout.position.x ** 2 + layout.position.z ** 2);
+    const pulseBoost =
+      pulseWaveRadius > 0 && Math.abs(distFromCenter - pulseWaveRadius) < 2
+        ? PULSE_WAVE_CONFIG.emissiveBoost
+        : 0;
+
+    (mat as MeshPhysicalMaterial).emissiveIntensity = baseEmissive + pulseBoost;
   });
 
   const linkStyle = semantics ? LINK_STATE_COLORS[semantics.linkState] : LINK_STATE_COLORS.unknown;
