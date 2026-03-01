@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export type VisualMode = 'dark' | 'light';
 export type RouteLayerMode = 'city' | 'debug' | 'both';
 export type SceneMode = 'cosmos' | 'tron';
+export type QualityLevel = 'high' | 'low';
 
 interface ViewState {
   visualMode: VisualMode;
@@ -10,6 +11,7 @@ interface ViewState {
   sceneMode: SceneMode;
   showGrid: boolean;
   focusTarget: [number, number, number] | null;
+  quality: QualityLevel;
   setVisualMode: (mode: VisualMode) => void;
   toggleVisualMode: () => void;
   setRouteLayerMode: (mode: RouteLayerMode) => void;
@@ -18,6 +20,8 @@ interface ViewState {
   setShowGrid: (show: boolean) => void;
   toggleGrid: () => void;
   setFocusTarget: (target: [number, number, number] | null) => void;
+  setQuality: (quality: QualityLevel) => void;
+  toggleQuality: () => void;
   reset: () => void;
 }
 
@@ -27,6 +31,7 @@ const initialViewState = {
   sceneMode: 'cosmos' as SceneMode,
   showGrid: false,
   focusTarget: null as [number, number, number] | null,
+  quality: localStorage.getItem('fenice-quality') === 'low' ? 'low' : 'high',
 };
 
 export const useViewStore = create<ViewState>((set) => ({
@@ -35,6 +40,7 @@ export const useViewStore = create<ViewState>((set) => ({
   sceneMode: initialViewState.sceneMode,
   showGrid: initialViewState.showGrid,
   focusTarget: initialViewState.focusTarget,
+  quality: initialViewState.quality,
   setVisualMode: (mode) => set({ visualMode: mode }),
   toggleVisualMode: () =>
     set((state) => ({ visualMode: state.visualMode === 'dark' ? 'light' : 'dark' })),
@@ -45,5 +51,15 @@ export const useViewStore = create<ViewState>((set) => ({
   setShowGrid: (show) => set({ showGrid: show }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   setFocusTarget: (target) => set({ focusTarget: target }),
+  setQuality: (quality) => {
+    localStorage.setItem('fenice-quality', quality);
+    set({ quality });
+  },
+  toggleQuality: () =>
+    set((state) => {
+      const next = state.quality === 'high' ? 'low' : 'high';
+      localStorage.setItem('fenice-quality', next);
+      return { quality: next };
+    }),
   reset: () => set(initialViewState),
 }));

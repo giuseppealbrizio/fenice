@@ -6,6 +6,12 @@ import {
   VIGNETTE_CONFIG,
   CHROMATIC_ABERRATION_CONFIG,
   NOISE_CONFIG,
+  GROUND_FOG_CONFIG,
+  HAZE_LAYERS_CONFIG,
+  GOD_RAYS_CONFIG,
+  PULSE_WAVE_CONFIG,
+  STATUS_PARTICLES_CONFIG,
+  AMBIENT_ANIMATION_CONFIG,
 } from '../utils/atmosphere';
 
 describe('COSMIC_PALETTE', () => {
@@ -56,5 +62,34 @@ describe('NOISE_CONFIG', () => {
   it('has low opacity for subtle film grain', () => {
     expect(NOISE_CONFIG.opacity).toBeGreaterThan(0);
     expect(NOISE_CONFIG.opacity).toBeLessThanOrEqual(0.15);
+  });
+});
+
+describe('M4 atmosphere constants', () => {
+  it('should export GROUND_FOG_CONFIG', () => {
+    expect(GROUND_FOG_CONFIG.opacity).toBe(0.1);
+    expect(GROUND_FOG_CONFIG.driftSpeed).toBe(0.02);
+  });
+
+  it('should export HAZE_LAYERS_CONFIG with 3 layers', () => {
+    expect(HAZE_LAYERS_CONFIG.layers).toHaveLength(3);
+  });
+
+  it('should export GOD_RAYS_CONFIG', () => {
+    expect(GOD_RAYS_CONFIG.intensity).toBe(0.3);
+    expect(GOD_RAYS_CONFIG.decay).toBe(0.92);
+  });
+
+  it('should export PULSE_WAVE_CONFIG', () => {
+    expect(PULSE_WAVE_CONFIG.intervalMs).toBe(50000);
+  });
+
+  it('should export STATUS_PARTICLES_CONFIG', () => {
+    expect(STATUS_PARTICLES_CONFIG.countPerBuilding).toBe(25);
+    expect(STATUS_PARTICLES_CONFIG.riseSpeed).toBe(0.3);
+  });
+
+  it('should export AMBIENT_ANIMATION_CONFIG', () => {
+    expect(AMBIENT_ANIMATION_CONFIG.lightArcDegrees).toBe(5);
   });
 });

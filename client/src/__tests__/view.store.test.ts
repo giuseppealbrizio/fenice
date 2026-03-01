@@ -56,6 +56,33 @@ describe('useViewStore', () => {
     expect(useViewStore.getState().sceneMode).toBe('cosmos');
   });
 
+  describe('quality', () => {
+    it('defaults to high', () => {
+      expect(useViewStore.getState().quality).toBe('high');
+    });
+
+    it('setQuality updates state', () => {
+      useViewStore.getState().setQuality('low');
+      expect(useViewStore.getState().quality).toBe('low');
+    });
+
+    it('toggleQuality flips between high and low', () => {
+      expect(useViewStore.getState().quality).toBe('high');
+
+      useViewStore.getState().toggleQuality();
+      expect(useViewStore.getState().quality).toBe('low');
+
+      useViewStore.getState().toggleQuality();
+      expect(useViewStore.getState().quality).toBe('high');
+    });
+
+    it('reset restores quality to initial value', () => {
+      useViewStore.getState().setQuality('low');
+      useViewStore.getState().reset();
+      expect(useViewStore.getState().quality).toBe('high');
+    });
+  });
+
   describe('focusTarget', () => {
     it('defaults to null', () => {
       expect(useViewStore.getState().focusTarget).toBeNull();

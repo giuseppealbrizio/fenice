@@ -90,3 +90,50 @@ export const COSMIC_LIGHTING = {
   keyLightColor: '#e0f0ff',
   keyLightPosition: [15, 25, 15] as [number, number, number],
 } as const;
+
+// ─── M4: Atmosphere constants ───────────────────────────────────────────────
+
+export const GROUND_FOG_CONFIG = {
+  opacity: 0.1,
+  driftSpeed: 0.02,
+  color: '#000020',
+  height: 0.5,
+} as const;
+
+export const HAZE_LAYERS_CONFIG = {
+  layers: [
+    { z: 40, opacity: 0.06, color: '#000015' },
+    { z: 80, opacity: 0.04, color: '#05051a' },
+    { z: 120, opacity: 0.03, color: '#0a0a2e' },
+  ],
+} as const;
+
+export const GOD_RAYS_CONFIG = {
+  intensity: 0.3,
+  decay: 0.92,
+  density: 0.5,
+} as const;
+
+export const PULSE_WAVE_CONFIG = {
+  intervalMs: 50000,
+  durationSec: 3,
+  emissiveBoost: 0.1,
+  maxRadius: 30,
+} as const;
+
+export const STATUS_PARTICLES_CONFIG = {
+  countPerBuilding: 25,
+  riseSpeed: 0.3,
+  maxHeight: 3,
+  size: 0.04,
+  opacity: 0.6,
+} as const;
+
+export const AMBIENT_ANIMATION_CONFIG = {
+  lightArcDegrees: 5,
+  lightBreathPeriod: 120,
+  lightIntensityRange: [0.5, 0.7] as [number, number],
+  colorTempCool: '#e0f0ff',
+  colorTempWarm: '#f0e8ff',
+  colorTempPeriod: 90,
+} as const;
