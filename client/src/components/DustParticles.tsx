@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { DUST_CONFIG } from '../utils/atmosphere';
 import { generateDustPositions } from '../utils/atmosphere-geometry';
 import type { QualityLevel } from '../stores/view.store';
+import { useCosmosSettingsStore } from '../stores/cosmos-settings.store';
 
 interface DustParticlesProps {
   quality: QualityLevel;
@@ -14,6 +15,7 @@ const TRAIL_COUNT = 50;
 export function DustParticles({ quality }: DustParticlesProps): React.JSX.Element {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.Points>(null);
+  const dustOpacity = useCosmosSettingsStore((s) => s.dustOpacity);
 
   const count = quality === 'high' ? DUST_CONFIG.count : 300;
 
@@ -98,7 +100,7 @@ export function DustParticles({ quality }: DustParticlesProps): React.JSX.Elemen
           size={DUST_CONFIG.maxSize}
           sizeAttenuation
           transparent
-          opacity={DUST_CONFIG.opacity}
+          opacity={dustOpacity}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
@@ -113,7 +115,7 @@ export function DustParticles({ quality }: DustParticlesProps): React.JSX.Elemen
             size={DUST_CONFIG.minSize}
             sizeAttenuation
             transparent
-            opacity={DUST_CONFIG.opacity * 0.4}
+            opacity={dustOpacity * 0.4}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
           />

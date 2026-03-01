@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { NEBULA_CONFIG } from '../utils/atmosphere';
 import type { QualityLevel } from '../stores/view.store';
+import { useCosmosSettingsStore } from '../stores/cosmos-settings.store';
 
 function createNebulaTexture(color: string): THREE.CanvasTexture {
   const size = 256;
@@ -43,6 +44,7 @@ const EXTRA_NEBULA_COLORS = ['#300070', '#180040'] as const;
 
 export function Nebulae({ quality }: NebulaeProps): React.JSX.Element {
   const groupRef = useRef<THREE.Group>(null);
+  const nebulaOpacity = useCosmosSettingsStore((s) => s.nebulaOpacity);
 
   const nebulae = useMemo<NebulaData[]>(() => {
     // Base 3 nebulae (always present)
@@ -114,9 +116,8 @@ export function Nebulae({ quality }: NebulaeProps): React.JSX.Element {
         // Breathing opacity
         const sprite = child as THREE.Sprite;
         if (sprite.material) {
-          const baseOpacity = NEBULA_CONFIG.opacity;
           sprite.material.opacity =
-            baseOpacity * (0.7 + 0.3 * Math.sin(t * 0.05 + data.driftOffset));
+            nebulaOpacity * (0.7 + 0.3 * Math.sin(t * 0.05 + data.driftOffset));
         }
       }
     }
@@ -134,7 +135,7 @@ export function Nebulae({ quality }: NebulaeProps): React.JSX.Element {
           <spriteMaterial
             map={n.texture}
             transparent
-            opacity={NEBULA_CONFIG.opacity}
+            opacity={nebulaOpacity}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />

@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { HAZE_LAYERS_CONFIG } from '../../utils/atmosphere';
+import { useCosmosSettingsStore } from '../../stores/cosmos-settings.store';
 
 export function HazeLayers(): React.JSX.Element {
+  const hazeOpacity = useCosmosSettingsStore((s) => s.hazeOpacity);
   const layers = useMemo(() => {
     return HAZE_LAYERS_CONFIG.layers.map((layer, i) => {
       const size = 256;
@@ -36,7 +38,7 @@ export function HazeLayers(): React.JSX.Element {
             map={layer.texture}
             color={layer.color}
             transparent
-            opacity={layer.opacity}
+            opacity={layer.opacity * hazeOpacity}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}

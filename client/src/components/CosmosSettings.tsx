@@ -105,6 +105,26 @@ const SLIDER_CONFIG: Array<{ group: string; sliders: SliderRowProps[] }> = [
       { label: 'Threshold', field: 'bloomThreshold', min: 0, max: 1, step: 0.05 },
     ],
   },
+  {
+    group: 'Post-Process',
+    sliders: [
+      { label: 'SSAO Power', field: 'ssaoIntensity', min: 0, max: 100, step: 1 },
+      { label: 'SSAO Radius', field: 'ssaoRadius', min: 0.1, max: 2.0, step: 0.05 },
+      { label: 'DoF Bokeh', field: 'dofBokehScale', min: 0, max: 10, step: 0.5 },
+      { label: 'DoF Focus', field: 'dofFocusDistance', min: 0, max: 0.1, step: 0.005 },
+      { label: 'Vignette', field: 'vignetteDarkness', min: 0, max: 1, step: 0.05 },
+      { label: 'Noise', field: 'noiseOpacity', min: 0, max: 0.3, step: 0.01 },
+    ],
+  },
+  {
+    group: 'Atmosphere',
+    sliders: [
+      { label: 'Fog Opacity', field: 'fogOpacity', min: 0, max: 0.5, step: 0.01 },
+      { label: 'Haze Mult', field: 'hazeOpacity', min: 0, max: 5, step: 0.1 },
+      { label: 'Nebula Opa', field: 'nebulaOpacity', min: 0, max: 0.2, step: 0.005 },
+      { label: 'Dust Opa', field: 'dustOpacity', min: 0, max: 0.5, step: 0.01 },
+    ],
+  },
 ];
 
 export function CosmosSettings(): React.JSX.Element | null {

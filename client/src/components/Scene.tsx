@@ -29,7 +29,6 @@ import {
   SCENE_FOG,
   VIGNETTE_CONFIG,
   CHROMATIC_ABERRATION_CONFIG,
-  NOISE_CONFIG,
   COSMIC_LIGHTING,
   SSAO_CONFIG,
   DEPTH_OF_FIELD_CONFIG,
@@ -71,6 +70,12 @@ function SceneEffects({
 }): React.JSX.Element | null {
   const bloomIntensity = useCosmosSettingsStore((s) => s.bloomIntensity);
   const bloomThreshold = useCosmosSettingsStore((s) => s.bloomThreshold);
+  const ssaoIntensity = useCosmosSettingsStore((s) => s.ssaoIntensity);
+  const ssaoRadius = useCosmosSettingsStore((s) => s.ssaoRadius);
+  const dofBokehScale = useCosmosSettingsStore((s) => s.dofBokehScale);
+  const dofFocusDistance = useCosmosSettingsStore((s) => s.dofFocusDistance);
+  const vignetteDarkness = useCosmosSettingsStore((s) => s.vignetteDarkness);
+  const noiseOpacity = useCosmosSettingsStore((s) => s.noiseOpacity);
 
   if (!isDark && !isStarChart) return null;
 
@@ -93,22 +98,22 @@ function SceneEffects({
           mipmapBlur
         />
         <SSAO
-          radius={SSAO_CONFIG.radius}
-          intensity={SSAO_CONFIG.intensity}
+          radius={ssaoRadius}
+          intensity={ssaoIntensity}
           luminanceInfluence={SSAO_CONFIG.luminanceInfluence}
           color={SSAO_COLOR}
         />
         <DepthOfField
-          focusDistance={DEPTH_OF_FIELD_CONFIG.focusDistance}
+          focusDistance={dofFocusDistance}
           focalLength={DEPTH_OF_FIELD_CONFIG.focalLength}
-          bokehScale={DEPTH_OF_FIELD_CONFIG.bokehScale}
+          bokehScale={dofBokehScale}
         />
-        <Vignette offset={VIGNETTE_CONFIG.offset} darkness={VIGNETTE_CONFIG.darkness} />
+        <Vignette offset={VIGNETTE_CONFIG.offset} darkness={vignetteDarkness} />
         <ChromaticAberration
           offset={new THREE.Vector2(...CHROMATIC_ABERRATION_CONFIG.offset)}
           blendFunction={BlendFunction.NORMAL}
         />
-        <Noise opacity={NOISE_CONFIG.opacity} blendFunction={BlendFunction.SOFT_LIGHT} />
+        <Noise opacity={noiseOpacity} blendFunction={BlendFunction.SOFT_LIGHT} />
       </EffectComposer>
     );
   }
@@ -121,12 +126,12 @@ function SceneEffects({
         luminanceSmoothing={0.8}
         mipmapBlur
       />
-      <Vignette offset={VIGNETTE_CONFIG.offset} darkness={VIGNETTE_CONFIG.darkness} />
+      <Vignette offset={VIGNETTE_CONFIG.offset} darkness={vignetteDarkness} />
       <ChromaticAberration
         offset={new THREE.Vector2(...CHROMATIC_ABERRATION_CONFIG.offset)}
         blendFunction={BlendFunction.NORMAL}
       />
-      <Noise opacity={NOISE_CONFIG.opacity} blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Noise opacity={noiseOpacity} blendFunction={BlendFunction.SOFT_LIGHT} />
     </EffectComposer>
   );
 }

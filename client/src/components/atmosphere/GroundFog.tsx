@@ -2,9 +2,11 @@ import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { GROUND_FOG_CONFIG } from '../../utils/atmosphere';
+import { useCosmosSettingsStore } from '../../stores/cosmos-settings.store';
 
 export function GroundFog(): React.JSX.Element {
   const meshRef = useRef<THREE.Mesh>(null);
+  const fogOpacity = useCosmosSettingsStore((s) => s.fogOpacity);
 
   const texture = useMemo(() => {
     const size = 256;
@@ -43,7 +45,7 @@ export function GroundFog(): React.JSX.Element {
         map={texture}
         color={GROUND_FOG_CONFIG.color}
         transparent
-        opacity={GROUND_FOG_CONFIG.opacity}
+        opacity={fogOpacity}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />

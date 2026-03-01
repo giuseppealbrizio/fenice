@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { COSMOS_LAYOUT, SERVICE_STAR, ENDPOINT_PLANET, CURVED_ROUTE } from '../utils/cosmos';
-import { BLOOM_CONFIG } from '../utils/atmosphere';
+import {
+  BLOOM_CONFIG,
+  SSAO_CONFIG,
+  DEPTH_OF_FIELD_CONFIG,
+  GROUND_FOG_CONFIG,
+  VIGNETTE_CONFIG,
+  NOISE_CONFIG,
+  NEBULA_CONFIG,
+  DUST_CONFIG,
+} from '../utils/atmosphere';
 
 export interface CosmosSettings {
   // Layout
@@ -21,6 +30,18 @@ export interface CosmosSettings {
   // Bloom
   bloomIntensity: number;
   bloomThreshold: number;
+  // M4: Post-processing
+  ssaoIntensity: number;
+  ssaoRadius: number;
+  dofBokehScale: number;
+  dofFocusDistance: number;
+  vignetteDarkness: number;
+  noiseOpacity: number;
+  // M4: Atmosphere
+  fogOpacity: number;
+  hazeOpacity: number;
+  nebulaOpacity: number;
+  dustOpacity: number;
 }
 
 interface CosmosSettingsState extends CosmosSettings {
@@ -42,6 +63,18 @@ const DEFAULTS: CosmosSettings = {
   routeOpacity: CURVED_ROUTE.opacity,
   bloomIntensity: BLOOM_CONFIG.intensity,
   bloomThreshold: BLOOM_CONFIG.luminanceThreshold,
+  // M4: Post-processing
+  ssaoIntensity: SSAO_CONFIG.intensity,
+  ssaoRadius: SSAO_CONFIG.radius,
+  dofBokehScale: DEPTH_OF_FIELD_CONFIG.bokehScale,
+  dofFocusDistance: DEPTH_OF_FIELD_CONFIG.focusDistance,
+  vignetteDarkness: VIGNETTE_CONFIG.darkness,
+  noiseOpacity: NOISE_CONFIG.opacity,
+  // M4: Atmosphere
+  fogOpacity: GROUND_FOG_CONFIG.opacity,
+  hazeOpacity: 1.0,
+  nebulaOpacity: NEBULA_CONFIG.opacity,
+  dustOpacity: DUST_CONFIG.opacity,
 };
 
 export const COSMOS_DEFAULTS = DEFAULTS;
