@@ -8,6 +8,7 @@ import { AuthGate } from './AuthGate';
 import { RingRoads } from './RingRoads';
 import { Boulevards } from './Boulevards';
 import { ServiceCorridors } from './ServiceCorridors';
+import { StatusParticles } from './atmosphere/StatusParticles';
 import { useViewStore } from '../stores/view.store';
 import { METHOD_COLORS } from '../utils/colors';
 import { DISTRICT_LIGHT } from '../utils/atmosphere';
@@ -19,6 +20,7 @@ export function City(): React.JSX.Element | null {
   const endpointSemantics = useWorldStore((s) => s.endpointSemantics);
   const authGate = useWorldStore((s) => s.authGate);
   const routeLayerMode = useViewStore((s) => s.routeLayerMode);
+  const quality = useViewStore((s) => s.quality);
 
   const layout = useMemo(() => computeCityLayout(services, endpoints), [services, endpoints]);
 
@@ -36,6 +38,24 @@ export function City(): React.JSX.Element | null {
         };
       }),
     [layout.districts, endpoints]
+  );
+
+  const degradedBuildings = useMemo(
+    () =>
+      layout.buildings
+        .map((b) => {
+          const sem = endpointSemantics[b.endpointId];
+          if (sem && (sem.linkState === 'degraded' || sem.linkState === 'blocked')) {
+            return {
+              position: { x: b.position.x, z: b.position.z },
+              height: b.height,
+              linkState: sem.linkState,
+            };
+          }
+          return null;
+        })
+        .filter((b): b is NonNullable<typeof b> => b !== null),
+    [layout.buildings, endpointSemantics]
   );
 
   if (endpoints.length === 0) return null;
@@ -64,6 +84,7 @@ export function City(): React.JSX.Element | null {
         if (!endpoint) return null;
         return <Building key={b.endpointId} layout={b} endpoint={endpoint} buildingIndex={idx} />;
       })}
+      {quality === 'high' && <StatusParticles buildings={degradedBuildings} />}
       {(routeLayerMode === 'city' || routeLayerMode === 'both') && (
         <ServiceCorridors
           districts={layout.districts}
