@@ -59,10 +59,10 @@ export function City(): React.JSX.Element | null {
           decay={DISTRICT_LIGHT.decay}
         />
       ))}
-      {layout.buildings.map((b) => {
+      {layout.buildings.map((b, idx) => {
         const endpoint = endpointMap.get(b.endpointId);
         if (!endpoint) return null;
-        return <Building key={b.endpointId} layout={b} endpoint={endpoint} />;
+        return <Building key={b.endpointId} layout={b} endpoint={endpoint} buildingIndex={idx} />;
       })}
       {(routeLayerMode === 'city' || routeLayerMode === 'both') && (
         <ServiceCorridors

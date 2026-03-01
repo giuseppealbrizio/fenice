@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useWorldStore } from '../stores/world.store';
+import { useViewStore } from '../stores/view.store';
 import { LINK_STATE_COLORS } from '../utils/colors';
 import type { Position3D } from '../services/layout.service';
 
@@ -14,7 +15,9 @@ export function AuthGate({ position }: AuthGateProps): React.JSX.Element {
   const meshRef = useRef<THREE.Mesh>(null);
   const hazeRef = useRef<THREE.Mesh>(null);
   const authGate = useWorldStore((s) => s.authGate);
+  const quality = useViewStore((s) => s.quality);
   const linkStyle = LINK_STATE_COLORS[authGate.linkState];
+  const isHighQuality = quality === 'high';
 
   const RING_RADIUS = 2.5;
   const RING_SEGMENTS = 48;
@@ -67,7 +70,7 @@ export function AuthGate({ position }: AuthGateProps): React.JSX.Element {
     // Haze sphere breathes gently
     if (hazeRef.current) {
       const hazeMat = hazeRef.current.material;
-      if (hazeMat instanceof THREE.MeshBasicMaterial) {
+      if (hazeMat instanceof THREE.Material && 'opacity' in hazeMat) {
         hazeMat.opacity = authGate.open
           ? 0.06 + 0.03 * Math.sin(clock.elapsedTime * 1.8)
           : 0.02 + 0.01 * Math.sin(clock.elapsedTime * 0.8);
@@ -89,19 +92,32 @@ export function AuthGate({ position }: AuthGateProps): React.JSX.Element {
           clearcoatRoughness={0.05}
           transparent
           opacity={authGate.open ? 1.0 : 0.4}
+          {...(isHighQuality ? { transmission: 0.4, thickness: 1.5, ior: 2.0 } : {})}
         />
       </mesh>
       {/* Atmospheric haze sphere */}
       <mesh ref={hazeRef} position={[position.x, 1.5, position.z]}>
         <sphereGeometry args={[3.5, 24, 24]} />
-        <meshBasicMaterial
-          color={linkStyle.hex}
-          transparent
-          opacity={0.05}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.BackSide}
-        />
+        {isHighQuality ? (
+          <meshPhysicalMaterial
+            color={linkStyle.hex}
+            transparent
+            opacity={0.05}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.BackSide}
+            iridescence={0.5}
+          />
+        ) : (
+          <meshBasicMaterial
+            color={linkStyle.hex}
+            transparent
+            opacity={0.05}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.BackSide}
+          />
+        )}
       </mesh>
       {/* Ground ring marker */}
       <Line points={ringPoints} color={linkStyle.hex} lineWidth={1.5} opacity={0.3} transparent />

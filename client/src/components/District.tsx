@@ -1,8 +1,47 @@
+import { useMemo } from 'react';
+import * as THREE from 'three';
 import { Html, Line } from '@react-three/drei';
 import type { DistrictLayout } from '../services/layout.service';
 import { GROUND_Y, ZONE_LAYOUT_CONFIG } from '../utils/constants';
 import { ZONE_STYLES } from '../utils/colors';
 import { useViewStore } from '../stores/view.store';
+
+const GRID_TEXTURE_SIZE = 256;
+const GRID_SPACING = 2; // lines every 2 units
+
+/** Generate a procedural grid texture with subtle lines. */
+function createGridTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = GRID_TEXTURE_SIZE;
+  canvas.height = GRID_TEXTURE_SIZE;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.clearRect(0, 0, GRID_TEXTURE_SIZE, GRID_TEXTURE_SIZE);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 1;
+
+  // Draw grid lines (the texture repeats, so one period is enough)
+  const step = GRID_TEXTURE_SIZE / GRID_SPACING;
+  for (let i = 0; i <= GRID_SPACING; i++) {
+    const pos = i * step;
+    // Vertical lines
+    ctx.beginPath();
+    ctx.moveTo(pos, 0);
+    ctx.lineTo(pos, GRID_TEXTURE_SIZE);
+    ctx.stroke();
+    // Horizontal lines
+    ctx.beginPath();
+    ctx.moveTo(0, pos);
+    ctx.lineTo(GRID_TEXTURE_SIZE, pos);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
 
 const LIGHT_ZONE_FLOOR_COLORS = {
   'public-perimeter': '#dce8ff',
@@ -16,8 +55,19 @@ interface DistrictProps {
 
 export function District({ layout }: DistrictProps): React.JSX.Element {
   const visualMode = useViewStore((s) => s.visualMode);
+  const quality = useViewStore((s) => s.quality);
   const width = layout.bounds.maxX - layout.bounds.minX;
   const depth = layout.bounds.maxZ - layout.bounds.minZ;
+  const showGrid = visualMode === 'dark' && quality === 'high';
+
+  // Procedural grid texture for dark mode + high quality
+  const gridTexture = useMemo(() => {
+    if (!showGrid) return null;
+    const tex = createGridTexture();
+    // Repeat based on district size so lines appear every 2 world units
+    tex.repeat.set(width / GRID_SPACING, depth / GRID_SPACING);
+    return tex;
+  }, [showGrid, width, depth]);
   const zoneStyle = ZONE_STYLES[layout.zone];
   const floorColor =
     visualMode === 'light' ? LIGHT_ZONE_FLOOR_COLORS[layout.zone] : zoneStyle.floorColor;
@@ -91,6 +141,23 @@ export function District({ layout }: DistrictProps): React.JSX.Element {
           emissiveIntensity={visualMode === 'dark' ? 0.05 : 0}
         />
       </mesh>
+
+      {/* Grid overlay (dark mode + high quality) */}
+      {showGrid && gridTexture && (
+        <mesh
+          position={[layout.center.x, GROUND_Y + 0.005, layout.center.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[width, depth]} />
+          <meshBasicMaterial
+            map={gridTexture}
+            transparent
+            opacity={1}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
 
       {/* Zone border + corner accents (protected-core only) */}
       {zoneStyle.borderColor && (

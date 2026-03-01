@@ -1,6 +1,6 @@
 import { useRef } from 'react';
-import type { Mesh } from 'three';
-import type { ThreeEvent } from '@react-three/fiber';
+import type { Mesh, MeshPhysicalMaterial } from 'three';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import type { WorldEndpoint } from '../types/world';
 import type { BuildingLayout } from '../services/layout.service';
@@ -12,20 +12,32 @@ import {
 } from '../utils/colors';
 import { useSelectionStore } from '../stores/selection.store';
 import { useWorldStore } from '../stores/world.store';
+import { useViewStore } from '../stores/view.store';
 import { BUILDING_MATERIAL, WIREFRAME_OVERLAY } from '../utils/atmosphere';
 
 interface BuildingProps {
   layout: BuildingLayout;
   endpoint: WorldEndpoint;
+  buildingIndex: number;
 }
 
-export function Building({ layout, endpoint }: BuildingProps): React.JSX.Element {
+export function Building({ layout, endpoint, buildingIndex }: BuildingProps): React.JSX.Element {
   const meshRef = useRef<Mesh>(null);
   const selectedId = useSelectionStore((s) => s.selectedId);
   const setSelected = useSelectionStore((s) => s.setSelected);
   const semantics = useWorldStore((s) => s.endpointSemantics[endpoint.id]);
+  const quality = useViewStore((s) => s.quality);
   const isSelected = selectedId === endpoint.id;
   const methodColor = METHOD_COLORS[endpoint.method];
+
+  // Emissive breathing animation (skip on low quality)
+  useFrame(({ clock }) => {
+    if (quality === 'low' || !meshRef.current) return;
+    const mat = meshRef.current.material;
+    if (!('emissiveIntensity' in mat)) return;
+    (mat as MeshPhysicalMaterial).emissiveIntensity =
+      0.1 + 0.08 * Math.sin(clock.elapsedTime * 0.3 + buildingIndex * 0.5);
+  });
 
   const linkStyle = semantics ? LINK_STATE_COLORS[semantics.linkState] : LINK_STATE_COLORS.unknown;
 
