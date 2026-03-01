@@ -3,7 +3,7 @@ import { useViewStore } from '../stores/view.store';
 import { METHOD_COLORS, METHOD_LABELS, LINK_STATE_COLORS } from '../utils/colors';
 import type { HttpMethod } from '../types/world';
 import type { LinkState } from '../types/semantic';
-import type { RouteLayerMode, SceneMode } from '../stores/view.store';
+import type { RouteLayerMode, SceneMode, QualityLevel } from '../stores/view.store';
 
 const LEGEND_METHODS: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete'];
 
@@ -23,6 +23,11 @@ const ROUTE_LAYER_OPTIONS: Array<{ mode: RouteLayerMode; label: string }> = [
 const SCENE_MODE_OPTIONS: Array<{ mode: SceneMode; label: string }> = [
   { mode: 'cosmos', label: 'Cosmos' },
   { mode: 'tron', label: 'Tron City' },
+];
+
+const QUALITY_OPTIONS: Array<{ level: QualityLevel; label: string }> = [
+  { level: 'low', label: 'Low' },
+  { level: 'high', label: 'High' },
 ];
 
 const HUD_THEME = {
@@ -69,6 +74,8 @@ export function HUD(): React.JSX.Element {
   const setRouteLayerMode = useViewStore((s) => s.setRouteLayerMode);
   const sceneMode = useViewStore((s) => s.sceneMode);
   const setSceneMode = useViewStore((s) => s.setSceneMode);
+  const quality = useViewStore((s) => s.quality);
+  const setQuality = useViewStore((s) => s.setQuality);
   const isCosmos = sceneMode === 'cosmos';
   const isStarChart = isCosmos && visualMode === 'light';
   const theme = isStarChart ? HUD_THEME.starChart : HUD_THEME[visualMode];
@@ -132,6 +139,39 @@ export function HUD(): React.JSX.Element {
                 cursor: 'pointer',
                 boxShadow: active ? '0 0 10px rgba(0, 229, 255, 0.2)' : 'none',
               }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+        <div
+          style={{
+            width: '1px',
+            height: '22px',
+            backgroundColor: theme.divider,
+            alignSelf: 'center',
+          }}
+        />
+        {QUALITY_OPTIONS.map((option) => {
+          const active = option.level === quality;
+          return (
+            <button
+              key={option.level}
+              type="button"
+              onClick={() => setQuality(option.level)}
+              style={{
+                border: `1px solid ${active ? '#a855f7' : theme.buttonBorder}`,
+                backgroundColor: active ? 'rgba(168, 85, 247, 0.15)' : theme.buttonBg,
+                color: theme.buttonText,
+                borderRadius: '999px',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '0.3px',
+                cursor: 'pointer',
+                boxShadow: active ? '0 0 10px rgba(168, 85, 247, 0.2)' : 'none',
+              }}
+              aria-label={`Set quality to ${option.level}`}
             >
               {option.label}
             </button>
