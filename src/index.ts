@@ -7,11 +7,11 @@ import { secureHeaders } from 'hono/secure-headers';
 import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { userRouter } from './routes/user.routes.js';
-import { mcpRouter } from './routes/mcp.routes.js';
+import { mcpRouter, setMcpProviders } from './routes/mcp.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 import { builderRouter } from './routes/builder.routes.js';
 import { createWsRouter } from './routes/ws.routes.js';
-import { createWorldWsRouter } from './routes/world-ws.routes.js';
+import { createWorldWsRouter, getWorldWsManager } from './routes/world-ws.routes.js';
 import { requestId } from './middleware/requestId.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -84,6 +84,29 @@ app.post(
     max: Number(process.env['BUILDER_RATE_LIMIT_MAX']) || 5,
   })
 );
+
+// MCP server needs access to the OpenAPI document and the WorldWsManager —
+// provided lazily to avoid the circular import of feeding `app` into a route
+// at module load time.
+setMcpProviders({
+  getOpenApiDocument: () =>
+    app.getOpenAPI31Document({
+      openapi: '3.1.0',
+      info: {
+        title: 'FENICE API',
+        version: '0.4.0',
+        description:
+          'AI-native, production-ready backend API — Formray Engineering Guidelines compliant',
+      },
+    }),
+  getWorldWsManager: () => {
+    try {
+      return getWorldWsManager();
+    } catch {
+      return null;
+    }
+  },
+});
 
 // Mount API routes
 app.route('/api/v1', healthRouter);
