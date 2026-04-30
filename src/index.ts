@@ -7,6 +7,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { userRouter } from './routes/user.routes.js';
+import { productRouter } from './routes/product.routes.js';
 import { mcpRouter, setMcpProviders } from './routes/mcp.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 import { builderRouter } from './routes/builder.routes.js';
@@ -73,6 +74,7 @@ app.use('/api/v1/*', rateLimiter());
 
 // Auth middleware — applied to protected routes only
 app.use('/api/v1/users/*', authMiddleware);
+app.use('/api/v1/products/*', authMiddleware);
 app.use('/api/v1/auth/logout', authMiddleware);
 app.use('/api/v1/upload/*', authMiddleware);
 app.use('/api/v1/upload/*', rateLimiter({ windowMs: 60_000, max: 5 }));
@@ -114,6 +116,7 @@ setMcpProviders({
 app.route('/api/v1', healthRouter);
 app.route('/api/v1', authRouter);
 app.route('/api/v1', userRouter);
+app.route('/api/v1', productRouter);
 app.route('/api/v1', mcpRouter);
 app.route('/api/v1', uploadRouter);
 app.route('/api/v1', builderRouter);
